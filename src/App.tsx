@@ -13,7 +13,7 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stageHostRef = useRef<HTMLDivElement>(null)
   const restoredMediaRef = useRef(false)
-  const { currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect } = useEditorStore()
+  const { currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding } = useEditorStore()
   const [stageSize, setStageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
   const { togglePlay, seek } = usePlayer(canvasRef)
 
@@ -22,6 +22,7 @@ function App() {
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return 16 / 9
     return w / h
   }, [stageAspect])
+  const safePreviewZoom = Number.isFinite(previewZoom) ? Math.min(1, Math.max(0.25, previewZoom)) : 1
 
   useEffect(() => {
     if (restoredMediaRef.current) return
@@ -95,6 +96,18 @@ function App() {
   }, [togglePlay, seek, currentTime, totalDuration, setCurrentTime])
 
   useEffect(() => {
+    if (previewZoom !== safePreviewZoom) {
+      setPreviewZoom(safePreviewZoom)
+    }
+  }, [previewZoom, safePreviewZoom, setPreviewZoom])
+
+  useEffect(() => {
+    if (!Number.isFinite(devicePadding) || devicePadding < 0 || devicePadding > 80) {
+      setDevicePadding(40)
+    }
+  }, [devicePadding, setDevicePadding])
+
+  useEffect(() => {
     const host = stageHostRef.current
     if (!host) return
 
@@ -137,9 +150,9 @@ function App() {
               <div
                 className="relative overflow-hidden rounded-xl border border-gray-300 shadow-lg"
                 style={{
-                  width: `${stageSize.width}px`,
-                  height: `${stageSize.height}px`,
-                  transform: `scale(${previewZoom})`,
+                  width: `${Math.max(stageSize.width, 220)}px`,
+                  height: `${Math.max(stageSize.height, 220 / stageRatio)}px`,
+                  transform: `scale(${safePreviewZoom})`,
                   transformOrigin: 'center center',
                   transition: 'transform 0.15s ease',
                   ...bgStyle,
@@ -152,17 +165,17 @@ function App() {
           <div className="w-64 shrink-0 flex flex-col gap-2">
             <div className="bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-1.5 flex items-center justify-center gap-0.5">
               <button
-                onClick={() => setPreviewZoom(Math.max(0.25, previewZoom - 0.1))}
+                onClick={() => setPreviewZoom(Math.max(0.25, safePreviewZoom - 0.1))}
                 className="p-1.5 text-gray-400 hover:text-gray-700 cursor-pointer"
                 title="Zoom out preview"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
               <span className="text-[10px] text-gray-500 font-mono min-w-[36px] text-center select-none">
-                {Math.round(previewZoom * 100)}%
+                {Math.round(safePreviewZoom * 100)}%
               </span>
               <button
-                onClick={() => setPreviewZoom(Math.min(2, previewZoom + 0.1))}
+                onClick={() => setPreviewZoom(Math.min(1, safePreviewZoom + 0.1))}
                 className="p-1.5 text-gray-400 hover:text-gray-700 cursor-pointer"
                 title="Zoom in preview"
               >
