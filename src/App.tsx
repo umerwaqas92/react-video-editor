@@ -6,6 +6,7 @@ import { TrimEditor } from '@/components/TrimEditor'
 import { ZoomEditor } from '@/components/ZoomEditor'
 import { BackgroundPicker } from '@/components/BackgroundPicker'
 import { usePlayer } from '@/hooks/usePlayer'
+import { useExporter } from '@/hooks/useExporter'
 import { useEditorStore } from '@/store/editorStore'
 import { loadMediaAssetUrl } from '@/lib/mediaStorage'
 import { clearMediaCache } from '@/lib/canvasRenderer'
@@ -18,6 +19,7 @@ function App() {
   const { clips, currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding, isPlaying } = useEditorStore()
   const [stageSize, setStageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
   const { togglePlay, seek } = usePlayer(canvasRef)
+  const { exporting, progress: exportProgress, startExport, cancelExport } = useExporter(canvasRef)
 
   const stageRatio = useMemo(() => {
     const [w, h] = stageAspect.split('/').map(Number)
@@ -184,7 +186,7 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
-      <Header />
+      <Header exporting={exporting} exportProgress={exportProgress} onExport={startExport} onCancelExport={cancelExport} />
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         <div className="flex-1 flex overflow-hidden gap-3 p-3">
           <div className="w-56 shrink-0">

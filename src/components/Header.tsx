@@ -1,10 +1,15 @@
 import { useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { useEditorStore, createClip } from '@/store/editorStore'
-import { Plus, ImageIcon, RotateCcw } from 'lucide-react'
+import { Plus, ImageIcon, RotateCcw, Download, X } from 'lucide-react'
 import { saveMediaAsset } from '@/lib/mediaStorage'
 
-export function Header() {
+export function Header({ exporting, exportProgress, onExport, onCancelExport }: {
+  exporting?: boolean
+  exportProgress?: number
+  onExport?: () => void
+  onCancelExport?: () => void
+}) {
   const videoInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const { addClip, playbackRate, setPlaybackRate, resetAll } = useEditorStore()
@@ -95,6 +100,25 @@ export function Header() {
             </button>
           ))}
         </div>
+
+        <div className="w-px h-6 bg-gray-200 mx-1" />
+
+        {exporting ? (
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-24 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${exportProgress}%` }} />
+            </div>
+            <span className="text-[10px] text-gray-500 font-mono">{exportProgress}%</span>
+            <button onClick={onCancelExport} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <Button variant="ghost" size="sm" onClick={onExport} title="Export video">
+            <Download className="w-3.5 h-3.5" />
+            Export
+          </Button>
+        )}
 
         <div className="w-px h-6 bg-gray-200 mx-1" />
 
