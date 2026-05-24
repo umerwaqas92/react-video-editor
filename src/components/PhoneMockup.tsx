@@ -200,8 +200,8 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
 
   // Compute zoom from active zoom motions
   // Fixed timing: 0.5s zoom-in, hold at peak, 0.5s zoom-out
-  const ZOOM_IN = 0.5
-  const ZOOM_OUT = 0.5
+  const ZOOM_IN = 0.2
+  const ZOOM_OUT = 0.2
   let motionZoom = 1
   let zoomOriginX = 0.5
   let zoomOriginY = 0.5
