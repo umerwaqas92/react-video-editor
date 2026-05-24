@@ -5,7 +5,7 @@ import { drawFrame, seekAllVideos, getVideoElement } from '@/lib/canvasRenderer'
 
 const EXPORT_FPS = 30
 const EXPORT_LONG_EDGE = 1920
-const DEFAULT_EXPORT_EXTENSION = 'webm'
+const DEFAULT_EXPORT_EXTENSION = 'mp4'
 
 type StageSize = { width: number; height: number }
 
@@ -35,9 +35,8 @@ function getTargetBitrate(width: number, height: number, fps: number): number {
 function chooseRecorderFormat(): { mimeType: string; extension: string } {
   const formats = [
     { mimeType: 'video/mp4;codecs=h264', extension: 'mp4' },
-    { mimeType: 'video/webm;codecs=vp9', extension: 'webm' },
-    { mimeType: 'video/webm;codecs=vp8', extension: 'webm' },
-    { mimeType: 'video/webm', extension: 'webm' },
+    { mimeType: 'video/mp4;codecs=avc1.42E01E', extension: 'mp4' },
+    { mimeType: 'video/mp4', extension: 'mp4' },
   ]
 
   for (const format of formats) {
@@ -324,12 +323,17 @@ export function useExporter(canvasRef: React.RefObject<HTMLCanvasElement | null>
     const stream = exportCanvas.captureStream(EXPORT_FPS)
     streamRef.current = stream
     const { mimeType, extension } = chooseRecorderFormat()
+    if (!mimeType) {
+      stream.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+      exportCanvasRef.current = null
+      alert('MP4 export is not supported in this browser. Please use a browser that supports MediaRecorder MP4 (H.264).')
+      return
+    }
     const videoBitsPerSecond = getTargetBitrate(width, height, EXPORT_FPS)
 
     chunksRef.current = []
-    const recorder = mimeType
-      ? new MediaRecorder(stream, { mimeType, videoBitsPerSecond })
-      : new MediaRecorder(stream, { videoBitsPerSecond })
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond })
     recorderRef.current = recorder
 
     recorder.ondataavailable = (e) => {
@@ -337,8 +341,7 @@ export function useExporter(canvasRef: React.RefObject<HTMLCanvasElement | null>
     }
 
     recorder.onstop = () => {
-      const blobType = mimeType || 'video/webm'
-      const blob = new Blob(chunksRef.current, { type: blobType })
+      const blob = new Blob(chunksRef.current, { type: mimeType })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
