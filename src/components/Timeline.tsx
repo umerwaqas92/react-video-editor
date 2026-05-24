@@ -219,9 +219,7 @@ function TimelineClipItem({
       style={{ width }}
     >
       <div className={`h-full flex items-center justify-center ${
-        clip.type === 'video'
-          ? 'bg-gradient-to-br from-purple-700/80 to-orange-600/80'
-          : 'bg-gradient-to-br from-emerald-700/80 to-teal-500/80'
+        clip.type === 'video' ? 'bg-violet-600' : 'bg-emerald-600'
       }`}>
         {clip.type === 'video' ? (
           <Film className="w-3.5 h-3.5 text-white/60" />
