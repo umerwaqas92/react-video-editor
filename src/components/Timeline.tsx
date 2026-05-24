@@ -345,8 +345,6 @@ export function Timeline() {
                 dragRef.current.fromIndex = index
               }}
               onDragEnd={() => { dragRef.current = null }}
-              index={index}
-              totalClips={clips.length}
             />
           ))}
           {clips.length === 0 && (
@@ -555,8 +553,6 @@ function TimelineClipItem({
   onDragStart,
   onDragOver,
   onDragEnd,
-  index,
-  totalClips,
 }: {
   clip: Clip
   isSelected: boolean
@@ -565,35 +561,12 @@ function TimelineClipItem({
   onDragStart: () => void
   onDragOver: (e: React.DragEvent) => void
   onDragEnd: () => void
-  index: number
-  totalClips: number
 }) {
   const effectiveDuration = (clip.duration - clip.trimStart - clip.trimEnd) / clip.speed
   const width = Math.max(effectiveDuration * pixelsPerSecond, 50)
-  const reorderClips = useEditorStore(s => s.reorderClips)
 
   return (
     <div className="relative flex-shrink-0 group/clip">
-      {/* Mobile reorder buttons — visible when selected */}
-      {isSelected && (
-        <div className="absolute -top-7 left-0 right-0 flex justify-center gap-1 md:hidden z-30">
-          <button
-            onClick={(e) => { e.stopPropagation(); if (index > 0) reorderClips(index, index - 1) }}
-            disabled={index === 0}
-            className="h-6 w-6 rounded-full bg-white border border-gray-300 shadow flex items-center justify-center text-gray-600 disabled:opacity-30 cursor-pointer"
-          >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); if (index < totalClips - 1) reorderClips(index, index + 1) }}
-            disabled={index === totalClips - 1}
-            className="h-6 w-6 rounded-full bg-white border border-gray-300 shadow flex items-center justify-center text-gray-600 disabled:opacity-30 cursor-pointer"
-          >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-          </button>
-        </div>
-      )}
-
       <div
         draggable
         data-clip-item="true"
