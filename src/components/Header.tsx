@@ -1,13 +1,13 @@
 import { useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { useEditorStore, createClip } from '@/store/editorStore'
-import { Plus, ImageIcon } from 'lucide-react'
+import { Plus, ImageIcon, RotateCcw } from 'lucide-react'
 import { saveMediaAsset } from '@/lib/mediaStorage'
 
 export function Header() {
   const videoInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
-  const { addClip, playbackRate, setPlaybackRate } = useEditorStore()
+  const { addClip, playbackRate, setPlaybackRate, resetAll } = useEditorStore()
 
   const handleVideoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -95,6 +95,18 @@ export function Header() {
             </button>
           ))}
         </div>
+
+        <div className="w-px h-6 bg-gray-200 mx-1" />
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => { if (confirm('Reset everything? This cannot be undone.')) resetAll() }}
+          title="Reset project"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Reset
+        </Button>
 
       </div>
     </header>

@@ -55,6 +55,7 @@ interface EditorStore {
   _history: string[]
   _future: string[]
   _pushSnapshot: () => void
+  resetAll: () => void
 }
 
 let idCounter = 0
@@ -310,6 +311,34 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   },
 
   selectZoomMotion: (id) => set({ selectedZoomMotionId: id, selectedClipId: null }),
+
+  resetAll: () => {
+    // Clear IndexedDB
+    const state = get()
+    for (const clip of state.clips) {
+      if (clip.mediaStorageKey) {
+        deleteMediaAsset(clip.mediaStorageKey).catch(() => {})
+      }
+    }
+    set({
+      clips: [],
+      zoomMotions: [],
+      selectedClipId: null,
+      selectedZoomMotionId: null,
+      background: { type: 'color', value: '#000000' },
+      devicePadding: 40,
+      previewZoom: 1,
+      stageAspect: '16/9',
+      deviceAspect: '9/16',
+      playbackRate: 1,
+      currentTime: 0,
+      isPlaying: false,
+      _history: [],
+      _future: [],
+      canUndo: false,
+      canRedo: false,
+    })
+  },
 }), {
   name: 'react-video-editor-state',
   storage: createJSONStorage(() => localStorage),
