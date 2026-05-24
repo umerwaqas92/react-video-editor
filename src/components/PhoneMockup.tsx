@@ -164,8 +164,8 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
 
   return (
     <div className="relative w-full h-full flex items-center justify-center overflow-hidden" style={{ padding: `${devicePadding}px` }}>
-      <div className="flex items-center justify-center">
-        <div className="relative" style={{ width: 340 }}>
+      <div className="flex items-center justify-center w-full h-full">
+        <div className="relative w-full max-w-[340px]">
           <div className={`relative bg-neutral-900 rounded-[3rem] p-2.5 border-[3px] shadow-2xl transition-colors ${
             isDragOver ? 'border-blue-400 shadow-blue-500/20' : 'border-neutral-700'
           }`}>
