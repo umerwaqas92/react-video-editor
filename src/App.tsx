@@ -199,6 +199,12 @@ function App() {
 
   const hasSelection = selectedClipId !== null || selectedZoomMotionId !== null
 
+  // Auto-open inline panel when clip or zoom motion is selected
+  useEffect(() => {
+    if (selectedZoomMotionId) setMobilePanel('zoom')
+    else if (selectedClipId) setMobilePanel('trim')
+  }, [selectedClipId, selectedZoomMotionId])
+
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       <Header exporting={exporting} exportProgress={exportProgress} onExport={startExport} onCancelExport={cancelExport} />
