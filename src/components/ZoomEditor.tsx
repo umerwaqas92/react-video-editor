@@ -17,7 +17,7 @@ export function ZoomEditor() {
   if (!motion) return null
 
   return (
-    <div className="bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3 space-y-2.5">
+    <div className="w-full md:w-64 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3 space-y-2.5">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-gray-800">Zoom Motion</span>
         <Button variant="destructive" size="sm" className="h-6 px-2 text-[10px]" onClick={handleDelete}>

@@ -13,8 +13,8 @@ function Slider({ className, min = 0, max = 100, step = 1, value, onValueChange,
   const percentage = ((displayValue - min) / (max - min)) * 100
 
   return (
-    <div className={cn("relative flex w-full touch-none select-none items-center", className)} {...props}>
-      <div className="relative h-1.5 w-full grow rounded-full bg-gray-200">
+    <div className={cn("relative flex w-full touch-none select-none items-center min-h-[44px]", className)} {...props}>
+      <div className="relative h-2 md:h-1.5 w-full grow rounded-full bg-gray-200">
         <div className="absolute h-full rounded-full bg-gray-800" style={{ width: `${percentage}%` }} />
       </div>
       <input
@@ -35,8 +35,8 @@ function Slider({ className, min = 0, max = 100, step = 1, value, onValueChange,
         className="absolute inset-0 w-full opacity-0 cursor-pointer"
       />
       <div
-        className="absolute top-1/2 block h-3.5 w-3.5 rounded-full border border-gray-300 bg-white -translate-y-1/2 shadow"
-        style={{ left: `calc(${percentage}% - ${percentage > 50 ? 14 : 0}px)` }}
+        className="absolute top-1/2 block h-5 w-5 md:h-3.5 md:w-3.5 rounded-full border border-gray-300 bg-white -translate-y-1/2 shadow"
+        style={{ left: `calc(${percentage}% - ${percentage > 50 ? 20 : 0}px)` }}
       />
     </div>
   )

@@ -15,7 +15,7 @@ function getInterval(pps: number): number {
   return 60
 }
 
-export function Timeline() {
+export function Timeline({ onClipLongPress, onZoomLongPress }: { onClipLongPress?: () => void; onZoomLongPress?: () => void }) {
   const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, removeZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion, isPlaying, setIsPlaying, playbackRate, setPlaybackRate, undo, redo, canUndo, canRedo, recalculateTimeline } = useEditorStore()
   const dragRef = useRef<{ clipId: string; fromIndex: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -75,20 +75,35 @@ export function Timeline() {
   useEffect(() => {
     if (!isScrubbing) return
 
-    const handleMove = (e: MouseEvent) => {
-      seekFromClientX(e.clientX)
+    const getClientX = (e: MouseEvent | TouchEvent): number => {
+      if ('touches' in e) {
+        if (e.touches.length === 0) {
+          if ('changedTouches' in e && e.changedTouches.length > 0) return e.changedTouches[0].clientX
+          return 0
+        }
+        return e.touches[0].clientX
+      }
+      return e.clientX
+    }
+
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      seekFromClientX(getClientX(e))
     }
 
     const handleUp = () => {
       setIsScrubbing(false)
     }
 
-    window.addEventListener('mousemove', handleMove)
+    window.addEventListener('mousemove', handleMove as EventListener)
     window.addEventListener('mouseup', handleUp)
+    window.addEventListener('touchmove', handleMove as EventListener, { passive: false })
+    window.addEventListener('touchend', handleUp)
 
     return () => {
-      window.removeEventListener('mousemove', handleMove)
+      window.removeEventListener('mousemove', handleMove as EventListener)
       window.removeEventListener('mouseup', handleUp)
+      window.removeEventListener('touchmove', handleMove as EventListener)
+      window.removeEventListener('touchend', handleUp)
     }
   }, [isScrubbing, seekFromClientX])
 
@@ -128,8 +143,9 @@ export function Timeline() {
 
   return (
     <div className="bg-white border-t border-gray-200 p-3">
-      {/* Toolbar */}
-      <div className="flex items-center gap-1 mb-2">
+      {/* Toolbar — horizontally scrollable on mobile */}
+      <div className="overflow-x-auto pb-1 mb-2 -mx-3 px-3 scrollbar-hide">
+      <div className="flex items-center gap-1 whitespace-nowrap min-w-max">
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={undo} disabled={!canUndo} title="Undo">
           <Undo className="w-3.5 h-3.5" />
         </Button>
@@ -185,6 +201,41 @@ export function Timeline() {
         >
           <SkipForward className="w-3.5 h-3.5" />
         </Button>
+
+        <div className="w-px h-4 bg-gray-200 mx-0.5" />
+
+        <button
+          onClick={() => { seekTo(currentTime - 5) }}
+          className="h-6 px-1.5 text-[10px] font-mono rounded bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+          title="Skip back 5 seconds"
+        >
+          -5s
+        </button>
+        <button
+          onClick={() => { seekTo(currentTime + 5) }}
+          className="h-6 px-1.5 text-[10px] font-mono rounded bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+          title="Skip forward 5 seconds"
+        >
+          +5s
+        </button>
+
+        <div className="w-px h-4 bg-gray-200 mx-0.5 hidden md:block" />
+
+        {/* Playback rate — visible on all screens */}
+        <div className="flex items-center gap-0.5">
+          {[1, 2, 3].map(rate => (
+            <button
+              key={rate}
+              onClick={() => setPlaybackRate(rate)}
+              className={`h-6 px-1.5 text-[10px] rounded font-mono cursor-pointer transition-colors ${
+                playbackRate === rate ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {rate}x
+            </button>
+          ))}
+        </div>
+
         <Button
           variant="ghost"
           size="icon"
@@ -246,6 +297,7 @@ export function Timeline() {
           {formatTime(currentTime)} / {formatTime(totalDuration())}
         </span>
       </div>
+      </div>
 
       {/* Clip track + ruler wrapped in single scrollable container */}
       <div
@@ -295,6 +347,9 @@ export function Timeline() {
                 dragRef.current.fromIndex = index
               }}
               onDragEnd={() => { dragRef.current = null }}
+              index={index}
+              totalClips={clips.length}
+              onLongPress={onClipLongPress}
             />
           ))}
           {clips.length === 0 && (
@@ -311,6 +366,11 @@ export function Timeline() {
               e.stopPropagation()
               e.preventDefault()
               startScrubbing(e.clientX)
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              startScrubbing(e.touches[0].clientX)
             }}
           >
             <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-red-500 -mt-0.5 ml-[-6px]" />
@@ -340,21 +400,49 @@ export function Timeline() {
                       const startX = e.clientX
                       const origStart = motion.startTime
                       const origEnd = motion.startTime + motion.duration
-                      const onMove = (ev: MouseEvent) => {
-                        const dx = (ev.clientX - startX) / pixelsPerSecond
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
                         const newStart = Math.max(0, origStart + dx)
                         const newDuration = Math.max(0.3, origEnd - newStart)
                         updateZoomMotion(motion.id, { startTime: newStart, duration: newDuration })
                       }
                       const onUp = () => {
-                        document.removeEventListener('mousemove', onMove)
+                        document.removeEventListener('mousemove', onMove as EventListener)
                         document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
                       }
-                      document.addEventListener('mousemove', onMove)
+                      document.addEventListener('mousemove', onMove as EventListener)
                       document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.touches[0].clientX
+                      const origStart = motion.startTime
+                      const origEnd = motion.startTime + motion.duration
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        const newStart = Math.max(0, origStart + dx)
+                        const newDuration = Math.max(0.3, origEnd - newStart)
+                        updateZoomMotion(motion.id, { startTime: newStart, duration: newDuration })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
                     }}
                   />
-                  {/* Body — drag to move */}
+                  {/* Body — drag to move, long press to open panel */}
                   <div
                     className="h-full rounded-full bg-amber-400/60 border border-amber-500/80 flex items-center justify-center text-[8px] text-amber-900 font-mono truncate px-1 cursor-grab active:cursor-grabbing mx-2"
                     onMouseDown={(e) => {
@@ -362,19 +450,61 @@ export function Timeline() {
                       const startX = e.clientX
                       const origStart = motion.startTime
                       let moved = false
-                      const onMove = (ev: MouseEvent) => {
-                        const dx = (ev.clientX - startX) / pixelsPerSecond
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
                         const newStart = Math.max(0, origStart + dx)
                         if (Math.abs(dx) > 0.05) moved = true
                         updateZoomMotion(motion.id, { startTime: newStart })
                       }
                       const onUp = () => {
-                        document.removeEventListener('mousemove', onMove)
+                        document.removeEventListener('mousemove', onMove as EventListener)
                         document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
                         if (!moved) selectZoomMotion(motion.id)
                       }
-                      document.addEventListener('mousemove', onMove)
+                      document.addEventListener('mousemove', onMove as EventListener)
                       document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.touches[0].clientX
+                      const origStart = motion.startTime
+                      let moved = false
+                      let longFired = false
+
+                      const longTimer = setTimeout(() => {
+                        longFired = true
+                        selectZoomMotion(motion.id)
+                        onZoomLongPress?.()
+                        if (navigator.vibrate) navigator.vibrate(10)
+                      }, 500)
+
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        const newStart = Math.max(0, origStart + dx)
+                        if (Math.abs(dx) > 0.05) {
+                          moved = true
+                          clearTimeout(longTimer)
+                        }
+                        updateZoomMotion(motion.id, { startTime: newStart })
+                      }
+                      const onUp = () => {
+                        clearTimeout(longTimer)
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                        if (!moved && !longFired) selectZoomMotion(motion.id)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
                     }}
                   >
                     {motion.peakScale}x
@@ -386,16 +516,41 @@ export function Timeline() {
                       e.stopPropagation(); e.preventDefault()
                       const startX = e.clientX
                       const origDuration = motion.duration
-                      const onMove = (ev: MouseEvent) => {
-                        const dx = (ev.clientX - startX) / pixelsPerSecond
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
                         updateZoomMotion(motion.id, { duration: Math.max(0.3, origDuration + dx) })
                       }
                       const onUp = () => {
-                        document.removeEventListener('mousemove', onMove)
+                        document.removeEventListener('mousemove', onMove as EventListener)
                         document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
                       }
-                      document.addEventListener('mousemove', onMove)
+                      document.addEventListener('mousemove', onMove as EventListener)
                       document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.touches[0].clientX
+                      const origDuration = motion.duration
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        updateZoomMotion(motion.id, { duration: Math.max(0.3, origDuration + dx) })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
                     }}
                   />
                 </div>
@@ -416,6 +571,9 @@ function TimelineClipItem({
   onDragStart,
   onDragOver,
   onDragEnd,
+  index,
+  totalClips,
+  onLongPress,
 }: {
   clip: Clip
   isSelected: boolean
@@ -424,50 +582,121 @@ function TimelineClipItem({
   onDragStart: () => void
   onDragOver: (e: React.DragEvent) => void
   onDragEnd: () => void
+  index: number
+  totalClips: number
+  onLongPress?: () => void
 }) {
   const effectiveDuration = (clip.duration - clip.trimStart - clip.trimEnd) / clip.speed
   const width = Math.max(effectiveDuration * pixelsPerSecond, 50)
+  const reorderClips = useEditorStore(s => s.reorderClips)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout>>()
+  const longPressFired = useRef(false)
+  const touchMoved = useRef(false)
+
+  const clearLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = undefined
+    }
+  }
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchMoved.current = false
+    longPressFired.current = false
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true
+      onLongPress?.()
+      // Vibrate for haptic feedback if supported
+      if (navigator.vibrate) navigator.vibrate(10)
+    }, 500)
+  }
+
+  const handleTouchMove = () => {
+    touchMoved.current = true
+    clearLongPress()
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    clearLongPress()
+    if (longPressFired.current) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+  }
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (longPressFired.current) {
+      longPressFired.current = false
+      return
+    }
+    onSelect(e)
+  }
 
   return (
-    <div
-      draggable
-      data-clip-item="true"
-      onClick={onSelect}
-      onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart() }}
-      onDragOver={onDragOver}
-      onDragEnd={onDragEnd}
-      className={`
-        relative flex-shrink-0 rounded-md overflow-hidden cursor-pointer border-2 transition-colors
-        ${isSelected
-          ? clip.type === 'video' ? 'border-violet-900 shadow-[0_0_0_2px_rgba(124,58,237,0.3)]' : 'border-emerald-900 shadow-[0_0_0_2px_rgba(5,150,105,0.3)]'
-          : 'border-gray-200 hover:border-gray-400'
-        }
-      `}
-      style={{ width }}
-    >
-      <div className={`h-full flex items-center justify-center transition-colors ${
-        clip.type === 'video'
-          ? isSelected ? 'bg-violet-700' : 'bg-violet-400'
-          : isSelected ? 'bg-emerald-700' : 'bg-emerald-400'
-      }`}>
-        {clip.type === 'video' ? (
-          <Film className="w-3.5 h-3.5 text-white/60" />
-        ) : (
-          <ImageIcon className="w-3.5 h-3.5 text-white/60" />
-        )}
-      </div>
-      <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-px flex items-center justify-between">
-        <span className="text-[9px] text-white/80 truncate max-w-[55%]">{clip.name}</span>
-        <span className="text-[9px] text-white/50 font-mono">{effectiveDuration.toFixed(1)}s</span>
-      </div>
-      <div className="absolute top-0.5 left-0.5 cursor-grab text-white/30 hover:text-white/60">
-        <GripHorizontal className="w-2.5 h-2.5" />
-      </div>
-      {clip.speed !== 1 && (
-        <div className="absolute top-0.5 right-0.5 bg-white/20 backdrop-blur text-[8px] text-white px-1 rounded-full font-mono">
-          {clip.speed}x
+    <div className="relative flex-shrink-0 group/clip">
+      {/* Mobile reorder buttons — visible when selected */}
+      {isSelected && (
+        <div className="absolute -top-7 left-0 right-0 flex justify-center gap-1 md:hidden z-30">
+          <button
+            onClick={(e) => { e.stopPropagation(); if (index > 0) reorderClips(index, index - 1) }}
+            disabled={index === 0}
+            className="h-6 w-6 rounded-full bg-white border border-gray-300 shadow flex items-center justify-center text-gray-600 disabled:opacity-30 cursor-pointer"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); if (index < totalClips - 1) reorderClips(index, index + 1) }}
+            disabled={index === totalClips - 1}
+            className="h-6 w-6 rounded-full bg-white border border-gray-300 shadow flex items-center justify-center text-gray-600 disabled:opacity-30 cursor-pointer"
+          >
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          </button>
         </div>
       )}
+
+      <div
+        draggable
+        data-clip-item="true"
+        onClick={handleClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart() }}
+        onDragOver={onDragOver}
+        onDragEnd={onDragEnd}
+        className={`
+          relative rounded-md overflow-hidden cursor-pointer border-2 transition-colors
+          ${isSelected
+            ? clip.type === 'video' ? 'border-violet-900 shadow-[0_0_0_2px_rgba(124,58,237,0.3)]' : 'border-emerald-900 shadow-[0_0_0_2px_rgba(5,150,105,0.3)]'
+            : 'border-gray-200 hover:border-gray-400'
+          }
+        `}
+        style={{ width }}
+      >
+        <div className={`h-10 md:h-full flex items-center justify-center transition-colors ${
+          clip.type === 'video'
+            ? isSelected ? 'bg-violet-700' : 'bg-violet-400'
+            : isSelected ? 'bg-emerald-700' : 'bg-emerald-400'
+        }`}>
+          {clip.type === 'video' ? (
+            <Film className="w-3.5 h-3.5 text-white/60" />
+          ) : (
+            <ImageIcon className="w-3.5 h-3.5 text-white/60" />
+          )}
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-px flex items-center justify-between">
+          <span className="text-[9px] text-white/80 truncate max-w-[55%]">{clip.name}</span>
+          <span className="text-[9px] text-white/50 font-mono">{effectiveDuration.toFixed(1)}s</span>
+        </div>
+        <div className="absolute top-0.5 left-0.5 cursor-grab text-white/30 hover:text-white/60 hidden md:block">
+          <GripHorizontal className="w-2.5 h-2.5" />
+        </div>
+        {clip.speed !== 1 && (
+          <div className="absolute top-0.5 right-0.5 bg-white/20 backdrop-blur text-[8px] text-white px-1 rounded-full font-mono">
+            {clip.speed}x
+          </div>
+        )}
+      </div>
     </div>
   )
 }

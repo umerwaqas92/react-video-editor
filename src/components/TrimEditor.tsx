@@ -39,7 +39,7 @@ export function TrimEditor() {
 
   if (!clip) {
     return (
-      <div className="w-64 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3">
+      <div className="w-full md:w-64 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3">
         <p className="text-xs text-gray-500">Select a clip to edit trim and speed.</p>
       </div>
     )
@@ -48,7 +48,7 @@ export function TrimEditor() {
   const effectiveDuration = (clip.duration - clip.trimStart - clip.trimEnd) / clip.speed
 
   return (
-    <div className="w-64 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3 space-y-2.5">
+    <div className="w-full md:w-64 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3 space-y-2.5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-xs font-medium text-gray-800 truncate">{clip.name}</span>

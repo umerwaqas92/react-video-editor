@@ -10,15 +10,18 @@ import { useExporter } from '@/hooks/useExporter'
 import { useEditorStore } from '@/store/editorStore'
 import { loadMediaAssetUrl } from '@/lib/mediaStorage'
 import { clearMediaCache } from '@/lib/canvasRenderer'
-import { ZoomIn, ZoomOut } from 'lucide-react'
+import { ZoomIn, ZoomOut, PaintBucket, Scissors } from 'lucide-react'
 import type { Clip } from '@/types'
+
+type MobilePanel = 'background' | 'trim' | 'zoom' | null
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stageHostRef = useRef<HTMLDivElement>(null)
   const restoredMediaRef = useRef(false)
-  const { clips, currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding, isPlaying } = useEditorStore()
+  const { clips, currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding, isPlaying, selectedClipId, selectedZoomMotionId, zoomMotions, isBackgroundPickerOpen, setBackgroundPickerOpen } = useEditorStore()
   const [stageSize, setStageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
+  const [mobilePanel, setMobilePanel] = useState<MobilePanel>(null)
   const { togglePlay, seek } = usePlayer(canvasRef)
   const { exporting, progress: exportProgress, startExport, cancelExport } = useExporter(canvasRef, stageSize)
 
@@ -194,16 +197,22 @@ function App() {
     ? { backgroundColor: background.value }
     : { backgroundImage: `url(${background.src})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
 
+  const closeMobilePanel = () => setMobilePanel(null)
+  const hasSelection = selectedClipId !== null || selectedZoomMotionId !== null
+
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       <Header exporting={exporting} exportProgress={exportProgress} onExport={startExport} onCancelExport={cancelExport} />
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-        <div className="flex-1 flex overflow-hidden gap-3 p-3">
-          <div className="w-56 shrink-0">
+        <div className="flex-1 flex overflow-hidden gap-3 p-2 md:p-3">
+          {/* Background Picker — Desktop sidebar */}
+          <div className="hidden md:block w-56 shrink-0">
             <BackgroundPicker />
           </div>
+
+          {/* Preview Stage */}
           <div className="flex-1 relative overflow-hidden rounded-xl border border-gray-200 bg-gray-200/60">
-            <div ref={stageHostRef} className="absolute inset-0 flex items-center justify-center p-3">
+            <div ref={stageHostRef} className="absolute inset-0 flex items-center justify-center p-2 md:p-3">
               <div
                 className="relative overflow-hidden rounded-xl border border-gray-300 shadow-lg"
                 style={{
@@ -218,8 +227,54 @@ function App() {
                 <PhoneMockup canvasRef={canvasRef} />
               </div>
             </div>
+
+            {/* Mobile-only: floating action buttons on the preview stage */}
+            <div className="absolute bottom-2 left-2 right-2 flex md:hidden items-center justify-center gap-1.5 z-10">
+              <button
+                onClick={() => {
+                  if (!isBackgroundPickerOpen) setBackgroundPickerOpen(true)
+                  setMobilePanel(mobilePanel === 'background' ? null : 'background')
+                }}
+                className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-medium shadow-lg backdrop-blur transition-colors cursor-pointer ${
+                  mobilePanel === 'background'
+                    ? 'bg-gray-800 text-white'
+                    : 'bg-white/90 text-gray-700 border border-gray-200'
+                }`}
+              >
+                <PaintBucket className="w-3.5 h-3.5" />
+                <span>BG</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (hasSelection) setMobilePanel(mobilePanel === 'trim' ? null : 'trim')
+                }}
+                className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-medium shadow-lg backdrop-blur transition-colors cursor-pointer ${
+                  mobilePanel === 'trim'
+                    ? 'bg-gray-800 text-white'
+                    : 'bg-white/90 text-gray-700 border border-gray-200'
+                } ${!hasSelection ? 'opacity-40' : ''}`}
+              >
+                <Scissors className="w-3.5 h-3.5" />
+                <span>Trim</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (zoomMotions.length > 0) setMobilePanel(mobilePanel === 'zoom' ? null : 'zoom')
+                }}
+                className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-medium shadow-lg backdrop-blur transition-colors cursor-pointer ${
+                  mobilePanel === 'zoom'
+                    ? 'bg-gray-800 text-white'
+                    : 'bg-white/90 text-gray-700 border border-gray-200'
+                } ${zoomMotions.length === 0 ? 'opacity-40' : ''}`}
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+                <span>Zoom</span>
+              </button>
+            </div>
           </div>
-          <div className="w-64 shrink-0 flex flex-col gap-2">
+
+          {/* Trim + Zoom Panels — Desktop sidebar */}
+          <div className="hidden md:flex w-64 shrink-0 flex-col gap-2">
             <div className="bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-1.5 flex items-center justify-center gap-0.5">
               <button
                 onClick={() => setPreviewZoom(Math.max(0.25, safePreviewZoom - 0.1))}
@@ -243,8 +298,76 @@ function App() {
             <ZoomEditor />
           </div>
         </div>
-        <Timeline />
+
+        {/* Mobile zoom controls — between preview and timeline */}
+        <div className="flex md:hidden items-center justify-center gap-2 px-3 pb-1">
+          <div className="bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-1.5 flex items-center justify-center gap-0.5">
+            <button
+              onClick={() => setPreviewZoom(Math.max(0.25, safePreviewZoom - 0.1))}
+              className="p-1.5 text-gray-400 hover:text-gray-700 cursor-pointer"
+              title="Zoom out preview"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-[10px] text-gray-500 font-mono min-w-[36px] text-center select-none">
+              {Math.round(safePreviewZoom * 100)}%
+            </span>
+            <button
+              onClick={() => setPreviewZoom(Math.min(1, safePreviewZoom + 0.1))}
+              className="p-1.5 text-gray-400 hover:text-gray-700 cursor-pointer"
+              title="Zoom in preview"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <Timeline onClipLongPress={() => setMobilePanel('trim')} onZoomLongPress={() => setMobilePanel('zoom')} />
       </div>
+
+      {/* Mobile overlays */}
+      {mobilePanel && (
+        <div className="fixed inset-0 z-50 md:hidden" onClick={closeMobilePanel}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className="absolute bottom-0 left-0 right-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drag handle + close button */}
+            <div className="flex items-center justify-between px-4 pt-2 pb-1">
+              <div className="w-10" />
+              <div className="w-10 h-1 rounded-full bg-gray-300" />
+              <button
+                onClick={closeMobilePanel}
+                className="w-10 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {mobilePanel === 'background' && (
+              <div className="p-3">
+                <BackgroundPicker />
+              </div>
+            )}
+            {mobilePanel === 'trim' && (
+              <div className="p-3 flex justify-center">
+                <TrimEditor />
+              </div>
+            )}
+            {mobilePanel === 'zoom' && (
+              <div className="p-3 flex justify-center">
+                <ZoomEditor />
+              </div>
+            )}
+
+            {/* Safe area spacer for phones with home indicator */}
+            <div className="h-6" />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

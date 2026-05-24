@@ -10,4 +10,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    allowedHosts: ['sled-subpanel-dribble.ngrok-free.dev'],
+  },
 })

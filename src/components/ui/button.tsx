@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils"
 
 function Button({ className, variant = "default", size = "md", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "default" | "outline" | "ghost" | "destructive"
-  size?: "sm" | "md" | "icon"
+  size?: "sm" | "md" | "lg" | "icon"
 }) {
   return (
     <button
@@ -15,7 +15,8 @@ function Button({ className, variant = "default", size = "md", ...props }: React
         variant === "destructive" && "bg-red-600 text-white hover:bg-red-700",
         size === "sm" && "h-8 px-3 text-xs",
         size === "md" && "h-9 px-4",
-        size === "icon" && "h-9 w-9",
+        size === "lg" && "h-11 px-5 text-base",
+        size === "icon" && "h-11 w-11 md:h-9 md:w-9",
         className,
       )}
       {...props}

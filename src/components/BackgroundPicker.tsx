@@ -56,7 +56,7 @@ export function BackgroundPicker() {
   }
 
   return (
-    <div className="w-56 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3 space-y-2.5">
+    <div className="w-full md:w-56 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3 space-y-2.5">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-gray-800 flex items-center gap-1.5">
           <PaintBucket className="w-3.5 h-3.5" />
@@ -74,7 +74,7 @@ export function BackgroundPicker() {
             <button
               key={color}
               onClick={() => setBackground({ type: 'color', value: color })}
-              className={`w-6 h-6 rounded-full border-2 cursor-pointer transition-colors ${
+              className={`w-8 h-8 md:w-6 md:h-6 rounded-full border-2 cursor-pointer transition-colors ${
                 background.type === 'color' && background.value === color
                   ? 'border-gray-800 ring-1 ring-gray-300'
                   : 'border-gray-200 hover:border-gray-400'
