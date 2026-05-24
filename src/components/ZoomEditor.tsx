@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
-import { Trash2 } from 'lucide-react'
+import { Trash2, X } from 'lucide-react'
 
 export function ZoomEditor() {
   const { selectedZoomMotionId, zoomMotions, updateZoomMotion, removeZoomMotion, selectZoomMotion } = useEditorStore()
@@ -14,15 +14,29 @@ export function ZoomEditor() {
     selectZoomMotion(null)
   }, [motion, removeZoomMotion, selectZoomMotion])
 
-  if (!motion) return null
+  if (!motion) {
+    return (
+      <div className="w-full md:w-64 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3">
+        <p className="text-xs text-gray-500">Select a zoom motion to edit.</p>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full md:w-64 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3 space-y-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-gray-800">Zoom Motion</span>
-        <Button variant="destructive" size="sm" className="h-6 px-2 text-[10px]" onClick={handleDelete}>
-          <Trash2 className="w-3 h-3" />
-        </Button>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs font-medium text-gray-800 truncate">Zoom Motion</span>
+          <span className="text-[10px] text-gray-400 font-mono flex-shrink-0">{motion.peakScale.toFixed(1)}x</span>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <Button variant="destructive" size="sm" className="h-6 px-2 text-[10px]" onClick={handleDelete}>
+            <Trash2 className="w-3 h-3" />
+          </Button>
+          <button onClick={() => selectZoomMotion(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       <div>
