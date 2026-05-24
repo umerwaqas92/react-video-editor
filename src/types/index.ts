@@ -1,0 +1,19 @@
+export interface Clip {
+  id: string
+  type: 'video' | 'image'
+  src: string
+  name: string
+  startTime: number
+  duration: number
+  trimStart: number
+  trimEnd: number
+  speed: number
+}
+
+export interface EditorState {
+  clips: Clip[]
+  selectedClipId: string | null
+  background: { type: 'color'; value: string } | { type: 'image'; src: string }
+  currentTime: number
+  isPlaying: boolean
+}
