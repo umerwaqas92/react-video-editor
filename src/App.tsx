@@ -22,6 +22,8 @@ function App() {
   const { clips, currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding, isPlaying, selectedClipId, selectedZoomMotionId, isBackgroundPickerOpen, setBackgroundPickerOpen } = useEditorStore()
   const [stageSize, setStageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>(null)
+  const [desktopTrimOpen, setDesktopTrimOpen] = useState(false)
+  const [desktopZoomOpen, setDesktopZoomOpen] = useState(false)
   const { togglePlay, seek } = usePlayer(canvasRef)
   const { exporting, progress: exportProgress, startExport, cancelExport } = useExporter(canvasRef, stageSize)
 
@@ -197,11 +199,13 @@ function App() {
     ? { backgroundColor: background.value }
     : { backgroundImage: `url(${background.src})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
 
-  // Auto-open inline panel when clip or zoom motion is selected
+  // Reset panels when selection cleared
   useEffect(() => {
-    if (selectedZoomMotionId) setMobilePanel('zoom')
-    else if (selectedClipId) setMobilePanel('trim')
-    else setMobilePanel(null)
+    if (!selectedClipId && !selectedZoomMotionId) {
+      setMobilePanel(null)
+      setDesktopTrimOpen(false)
+      setDesktopZoomOpen(false)
+    }
   }, [selectedClipId, selectedZoomMotionId])
 
   return (
@@ -255,8 +259,36 @@ function App() {
                 <ZoomIn className="w-3.5 h-3.5" />
               </button>
             </div>
-            {selectedClipId && <TrimEditor />}
-            {selectedZoomMotionId && <ZoomEditor />}
+            {selectedClipId && (
+              <button
+                onClick={() => setDesktopTrimOpen(!desktopTrimOpen)}
+                className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer border ${
+                  desktopTrimOpen
+                    ? 'bg-gray-800 text-white border-gray-800'
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <Scissors className="w-3.5 h-3.5" />
+                <span className="truncate">Trim & Speed</span>
+                <span className="ml-auto text-[10px] opacity-60">{desktopTrimOpen ? '−' : '+'}</span>
+              </button>
+            )}
+            {desktopTrimOpen && <TrimEditor />}
+            {selectedZoomMotionId && (
+              <button
+                onClick={() => setDesktopZoomOpen(!desktopZoomOpen)}
+                className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer border ${
+                  desktopZoomOpen
+                    ? 'bg-gray-800 text-white border-gray-800'
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+                <span className="truncate">Zoom Motion</span>
+                <span className="ml-auto text-[10px] opacity-60">{desktopZoomOpen ? '−' : '+'}</span>
+              </button>
+            )}
+            {desktopZoomOpen && <ZoomEditor />}
           </div>
         </div>
 

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEditorStore, createZoomMotion } from '@/store/editorStore'
 import type { Clip } from '@/types'
-import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors, Play, Pause, Undo, Redo, AlignStartHorizontal } from 'lucide-react'
+import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors, Play, Pause, Undo, Redo, AlignStartHorizontal, Maximize } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { seekAllVideos } from '@/lib/canvasRenderer'
 
@@ -294,6 +294,25 @@ export function Timeline() {
           >
             <AlignStartHorizontal className="w-3.5 h-3.5" />
           </Button>
+
+          <div className="w-px h-4 bg-gray-200 mx-1" />
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => {
+              const el = scrollRef.current
+              if (!el || duration <= 0) return
+              const padding = 60
+              const availableWidth = el.clientWidth - padding
+              const fitZoom = Math.max(2, Math.min(200, Math.round(availableWidth / duration)))
+              setTimelineZoom(fitZoom)
+            }}
+            title="Fit all in timeline"
+          >
+            <Maximize className="w-3.5 h-3.5" />
+          </Button>
         </div>
       </div>
 
@@ -368,8 +387,8 @@ export function Timeline() {
               startScrubbing(e.touches[0].clientX)
             }}
           >
-            <div className="w-4 h-4 border-l-[10px] border-r-[10px] border-t-[12px] border-l-transparent border-r-transparent border-t-red-500 flex-shrink-0" />
-            <div className="w-[4px] bg-red-500 h-full flex-shrink-0 rounded-sm" />
+            <div className="w-4 h-4 border-l-[10px] border-r-[10px] border-t-[12px] border-l-transparent border-r-transparent border-t-gray-900 flex-shrink-0" />
+            <div className="w-[4px] bg-gray-900 h-full flex-shrink-0 rounded-sm" />
           </div>
         </div>
 
