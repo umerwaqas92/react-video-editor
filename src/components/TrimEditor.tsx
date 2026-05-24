@@ -19,7 +19,7 @@ const DEFAULT_MOTION: ClipMotion = {
 }
 
 export function TrimEditor() {
-  const { selectedClipId, clips, updateClip, removeClip, selectClip } = useEditorStore()
+  const { selectedClipId, clips, updateClip, removeClip, selectClip, currentTime } = useEditorStore()
   const clip = clips.find(c => c.id === selectedClipId) ?? null
 
   const handleDelete = useCallback(() => {
@@ -70,6 +70,15 @@ export function TrimEditor() {
           <span className="font-mono">{clip.trimStart.toFixed(1)}s</span>
         </div>
         <Slider min={0} max={clip.duration - clip.trimEnd - 0.1} step={0.05} value={[clip.trimStart]} onValueChange={([v]) => updateClip(clip.id, { trimStart: v ?? clip.trimStart })} />
+        <button
+          className="text-[9px] text-gray-500 hover:text-gray-800 cursor-pointer mt-0.5"
+          onClick={() => {
+            const sourceAtPlayhead = clip.trimStart + (currentTime - clip.startTime) * clip.speed
+            updateClip(clip.id, { trimStart: Math.max(0, Math.min(clip.duration - clip.trimEnd - 0.1, sourceAtPlayhead)) })
+          }}
+        >
+          Set at playhead ({((currentTime - clip.startTime) * clip.speed + clip.trimStart).toFixed(1)}s)
+        </button>
       </div>
 
       <div>
@@ -78,6 +87,15 @@ export function TrimEditor() {
           <span className="font-mono">{clip.trimEnd.toFixed(1)}s</span>
         </div>
         <Slider min={0} max={clip.duration - clip.trimStart - 0.1} step={0.05} value={[clip.trimEnd]} onValueChange={([v]) => updateClip(clip.id, { trimEnd: v ?? clip.trimEnd })} />
+        <button
+          className="text-[9px] text-gray-500 hover:text-gray-800 cursor-pointer mt-0.5"
+          onClick={() => {
+            const sourceAtPlayhead = clip.trimStart + (currentTime - clip.startTime) * clip.speed
+            updateClip(clip.id, { trimEnd: Math.max(0, Math.min(clip.duration - clip.trimStart - 0.1, clip.duration - sourceAtPlayhead)) })
+          }}
+        >
+          Set at playhead ({(clip.duration - (clip.trimStart + (currentTime - clip.startTime) * clip.speed)).toFixed(1)}s)
+        </button>
       </div>
 
       <div>

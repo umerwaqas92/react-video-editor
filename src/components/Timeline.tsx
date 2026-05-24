@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEditorStore, createZoomMotion } from '@/store/editorStore'
 import type { Clip } from '@/types'
-import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors, Play, Pause } from 'lucide-react'
+import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors, Play, Pause, Undo, Redo } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { seekAllVideos } from '@/lib/canvasRenderer'
 
@@ -16,7 +16,7 @@ function getInterval(pps: number): number {
 }
 
 export function Timeline() {
-  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, removeZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion, isPlaying, setIsPlaying, playbackRate, setPlaybackRate } = useEditorStore()
+  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, removeZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion, isPlaying, setIsPlaying, playbackRate, setPlaybackRate, undo, redo, canUndo, canRedo } = useEditorStore()
   const dragRef = useRef<{ clipId: string; fromIndex: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const seekRafRef = useRef<number | null>(null)
@@ -128,8 +128,17 @@ export function Timeline() {
 
   return (
     <div className="bg-white border-t border-gray-200 p-3">
-      {/* Zoom controls */}
+      {/* Toolbar */}
       <div className="flex items-center gap-1 mb-2">
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={undo} disabled={!canUndo} title="Undo">
+          <Undo className="w-3.5 h-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={redo} disabled={!canRedo} title="Redo">
+          <Redo className="w-3.5 h-3.5" />
+        </Button>
+
+        <div className="w-px h-4 bg-gray-200 mx-0.5" />
+
         <Button
           variant="ghost"
           size="icon"
@@ -426,12 +435,17 @@ function TimelineClipItem({
       onDragEnd={onDragEnd}
       className={`
         relative flex-shrink-0 rounded-md overflow-hidden cursor-pointer border-2 transition-colors
-        ${isSelected ? 'border-gray-800 shadow-[0_0_0_2px_rgba(0,0,0,0.15)]' : 'border-gray-200 hover:border-gray-400'}
+        ${isSelected
+          ? clip.type === 'video' ? 'border-violet-900 shadow-[0_0_0_2px_rgba(124,58,237,0.3)]' : 'border-emerald-900 shadow-[0_0_0_2px_rgba(5,150,105,0.3)]'
+          : 'border-gray-200 hover:border-gray-400'
+        }
       `}
       style={{ width }}
     >
-      <div className={`h-full flex items-center justify-center ${
-        clip.type === 'video' ? 'bg-violet-600' : 'bg-emerald-600'
+      <div className={`h-full flex items-center justify-center transition-colors ${
+        clip.type === 'video'
+          ? isSelected ? 'bg-violet-700' : 'bg-violet-400'
+          : isSelected ? 'bg-emerald-700' : 'bg-emerald-400'
       }`}>
         {clip.type === 'video' ? (
           <Film className="w-3.5 h-3.5 text-white/60" />

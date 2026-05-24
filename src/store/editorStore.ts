@@ -47,6 +47,14 @@ interface EditorStore {
   removeZoomMotion: (id: string) => void
   updateZoomMotion: (id: string, updates: Partial<ZoomMotion>) => void
   selectZoomMotion: (id: string | null) => void
+
+  undo: () => void
+  redo: () => void
+  canUndo: boolean
+  canRedo: boolean
+  _history: string[]
+  _future: string[]
+  _pushSnapshot: () => void
 }
 
 let idCounter = 0
@@ -64,6 +72,23 @@ export function createZoomMotion(overrides?: Partial<ZoomMotion>): ZoomMotion {
     targetY: 0.5,
     ...overrides,
   }
+}
+
+type Snapshot = Pick<EditorStore, 'clips' | 'zoomMotions' | 'background' | 'devicePadding' | 'stageAspect' | 'deviceAspect'>
+
+function takeSnapshot(state: EditorStore): string {
+  return JSON.stringify({
+    clips: state.clips,
+    zoomMotions: state.zoomMotions,
+    background: state.background,
+    devicePadding: state.devicePadding,
+    stageAspect: state.stageAspect,
+    deviceAspect: state.deviceAspect,
+  })
+}
+
+function applySnapshot(json: string): Partial<EditorStore> {
+  return JSON.parse(json) as Partial<EditorStore>
 }
 
 export function createClip(overrides: Partial<Clip> & { type: 'video' | 'image'; src: string; name: string; duration: number }): Clip {
@@ -94,8 +119,47 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   playbackRate: 1,
   currentTime: 0,
   isPlaying: false,
+  _history: [] as string[],
+  _future: [] as string[],
+  canUndo: false,
+  canRedo: false,
+
+  _pushSnapshot: () => {
+    const state = get()
+    const json = takeSnapshot(state)
+    set({ _history: [...state._history.slice(-50), json], _future: [], canUndo: true, canRedo: false })
+  },
+
+  undo: () => {
+    const state = get()
+    if (state._history.length === 0) return
+    const current = takeSnapshot(state)
+    const prev = state._history[state._history.length - 1]
+    set({
+      ...applySnapshot(prev),
+      _history: state._history.slice(0, -1),
+      _future: [...state._future, current],
+      canUndo: state._history.length > 1,
+      canRedo: true,
+    })
+  },
+
+  redo: () => {
+    const state = get()
+    if (state._future.length === 0) return
+    const current = takeSnapshot(state)
+    const next = state._future[state._future.length - 1]
+    set({
+      ...applySnapshot(next),
+      _history: [...state._history, current],
+      _future: state._future.slice(0, -1),
+      canUndo: true,
+      canRedo: state._future.length > 1,
+    })
+  },
 
   addClip: (clip) => {
+    get()._pushSnapshot()
     const state = get()
     const lastClip = state.clips[state.clips.length - 1]
     const startTime = lastClip ? lastClip.startTime + get().getEffectiveDuration(lastClip) : 0
@@ -103,6 +167,7 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   },
 
   removeClip: (id) => {
+    get()._pushSnapshot()
     const state = get()
     const clip = state.clips.find(c => c.id === id)
     if (!clip) return
@@ -127,6 +192,7 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   },
 
   updateClip: (id, updates) => {
+    get()._pushSnapshot()
     set(state => ({
       clips: state.clips.map(c => c.id === id ? { ...c, ...updates } : c),
     }))
@@ -145,9 +211,9 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     }
   },
 
-  setBackground: (bg) => set({ background: bg }),
+  setBackground: (bg) => { get()._pushSnapshot(); set({ background: bg }) },
 
-  setDevicePadding: (padding) => set({ devicePadding: padding }),
+  setDevicePadding: (padding) => { get()._pushSnapshot(); set({ devicePadding: padding }) },
 
   setPreviewZoom: (zoom) => set({ previewZoom: zoom }),
 
@@ -155,9 +221,9 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
 
   setBackgroundPickerOpen: (open) => set({ isBackgroundPickerOpen: open }),
 
-  setStageAspect: (aspect) => set({ stageAspect: aspect }),
+  setStageAspect: (aspect) => { get()._pushSnapshot(); set({ stageAspect: aspect }) },
 
-  setDeviceAspect: (aspect) => set({ deviceAspect: aspect }),
+  setDeviceAspect: (aspect) => { get()._pushSnapshot(); set({ deviceAspect: aspect }) },
 
   setPlaybackRate: (rate) => set({ playbackRate: Math.max(0.25, Math.min(4, rate)) }),
 
@@ -177,6 +243,7 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   },
 
   reorderClips: (fromIndex, toIndex) => {
+    get()._pushSnapshot()
     set(state => {
       const newClips = [...state.clips]
       const [removed] = newClips.splice(fromIndex, 1)
@@ -194,6 +261,7 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   },
 
   splitClipAtTime: (time) => {
+    get()._pushSnapshot()
     const state = get()
     const minSegment = 1 / 30
     const index = state.clips.findIndex((clip) => {
@@ -225,14 +293,17 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   },
 
   addZoomMotion: (motion) => {
+    get()._pushSnapshot()
     set(state => ({ zoomMotions: [...state.zoomMotions, motion] }))
   },
 
   removeZoomMotion: (id) => {
+    get()._pushSnapshot()
     set(state => ({ zoomMotions: state.zoomMotions.filter(m => m.id !== id) }))
   },
 
   updateZoomMotion: (id, updates) => {
+    get()._pushSnapshot()
     set(state => ({
       zoomMotions: state.zoomMotions.map(m => m.id === id ? { ...m, ...updates } : m),
     }))
@@ -257,5 +328,9 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     playbackRate: state.playbackRate,
     currentTime: state.currentTime,
     isPlaying: state.isPlaying,
+    _history: state._history,
+    _future: state._future,
+    canUndo: state.canUndo,
+    canRedo: state.canRedo,
   }),
 }))
