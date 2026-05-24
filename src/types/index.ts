@@ -1,3 +1,15 @@
+export interface ClipMotion {
+  enabled: boolean
+  startScale: number
+  endScale: number
+  startX: number
+  startY: number
+  endX: number
+  endY: number
+  anchorX: number
+  anchorY: number
+}
+
 export interface Clip {
   id: string
   type: 'video' | 'image'
@@ -12,6 +24,7 @@ export interface Clip {
   speed: number
   naturalWidth: number
   naturalHeight: number
+  motion?: ClipMotion
 }
 
 export interface EditorState {

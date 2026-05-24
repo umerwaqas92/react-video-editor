@@ -2,9 +2,21 @@ import { useCallback } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
-import { Trash2, X } from 'lucide-react'
+import { Trash2, X, ZoomIn } from 'lucide-react'
+import type { ClipMotion } from '@/types'
 
 const SPEED_PRESETS = [0.25, 0.5, 1, 1.5, 2, 3, 4]
+const DEFAULT_MOTION: ClipMotion = {
+  enabled: true,
+  startScale: 1,
+  endScale: 1.2,
+  startX: 0,
+  startY: 0,
+  endX: 0,
+  endY: 0,
+  anchorX: 50,
+  anchorY: 50,
+}
 
 export function TrimEditor() {
   const { selectedClipId, clips, updateClip, removeClip, selectClip } = useEditorStore()
@@ -14,6 +26,16 @@ export function TrimEditor() {
     if (!clip) return
     removeClip(clip.id)
   }, [clip, removeClip])
+
+  const handleAddMotion = useCallback(() => {
+    if (!clip) return
+    updateClip(clip.id, { motion: { ...DEFAULT_MOTION } })
+  }, [clip, updateClip])
+
+  const handleRemoveMotion = useCallback(() => {
+    if (!clip) return
+    updateClip(clip.id, { motion: undefined })
+  }, [clip, updateClip])
 
   if (!clip) {
     return (
@@ -79,6 +101,97 @@ export function TrimEditor() {
           ))}
         </div>
       </div>
+
+      {!clip.motion && (
+        <Button variant="outline" size="sm" className="h-7 text-[11px] w-full" onClick={handleAddMotion}>
+          <ZoomIn className="w-3.5 h-3.5" />
+          Add Zoom Motion
+        </Button>
+      )}
+
+      {clip.motion && (
+        <div className="space-y-2 border border-gray-200 rounded-md p-2 bg-gray-50/50">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-medium text-gray-700">Zoom + Slide</span>
+            <button
+              onClick={handleRemoveMotion}
+              className="text-[10px] text-red-500 hover:text-red-400 cursor-pointer"
+            >
+              Remove
+            </button>
+          </div>
+
+          <div>
+            <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
+              <span>Zoom Value</span>
+              <span className="font-mono">{clip.motion.endScale.toFixed(2)}x</span>
+            </div>
+            <Slider
+              min={1}
+              max={3}
+              step={0.05}
+              value={[clip.motion.endScale]}
+              onValueChange={([v]) => updateClip(clip.id, { motion: { ...clip.motion!, endScale: v ?? clip.motion!.endScale } })}
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
+              <span>Zoom Point X</span>
+              <span className="font-mono">{Math.round(clip.motion.anchorX)}%</span>
+            </div>
+            <Slider
+              min={0}
+              max={100}
+              step={1}
+              value={[clip.motion.anchorX]}
+              onValueChange={([v]) => updateClip(clip.id, { motion: { ...clip.motion!, anchorX: v ?? clip.motion!.anchorX } })}
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
+              <span>Zoom Point Y</span>
+              <span className="font-mono">{Math.round(clip.motion.anchorY)}%</span>
+            </div>
+            <Slider
+              min={0}
+              max={100}
+              step={1}
+              value={[clip.motion.anchorY]}
+              onValueChange={([v]) => updateClip(clip.id, { motion: { ...clip.motion!, anchorY: v ?? clip.motion!.anchorY } })}
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
+              <span>Slide X</span>
+              <span className="font-mono">{clip.motion.endX.toFixed(1)}%</span>
+            </div>
+            <Slider
+              min={-30}
+              max={30}
+              step={0.5}
+              value={[clip.motion.endX]}
+              onValueChange={([v]) => updateClip(clip.id, { motion: { ...clip.motion!, endX: v ?? clip.motion!.endX } })}
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
+              <span>Slide Y</span>
+              <span className="font-mono">{clip.motion.endY.toFixed(1)}%</span>
+            </div>
+            <Slider
+              min={-30}
+              max={30}
+              step={0.5}
+              value={[clip.motion.endY]}
+              onValueChange={([v]) => updateClip(clip.id, { motion: { ...clip.motion!, endY: v ?? clip.motion!.endY } })}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

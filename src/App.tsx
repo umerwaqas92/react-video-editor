@@ -13,7 +13,7 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stageHostRef = useRef<HTMLDivElement>(null)
   const restoredMediaRef = useRef(false)
-  const { currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding } = useEditorStore()
+  const { clips, currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding, isPlaying } = useEditorStore()
   const [stageSize, setStageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
   const { togglePlay, seek } = usePlayer(canvasRef)
 
@@ -133,6 +133,44 @@ function App() {
     return () => observer.disconnect()
   }, [stageRatio])
 
+  const stageMotion = useMemo(() => {
+    const activeClip = clips.find((clip) => {
+      const effectiveDuration = (clip.duration - clip.trimStart - clip.trimEnd) / clip.speed
+      return currentTime >= clip.startTime && currentTime < clip.startTime + effectiveDuration
+    })
+
+    const motion = activeClip?.motion
+    if (!activeClip || !motion?.enabled) {
+      return {
+        scale: 1,
+        tx: 0,
+        ty: 0,
+        originX: 50,
+        originY: 50,
+      }
+    }
+
+    const effectiveDuration = (activeClip.duration - activeClip.trimStart - activeClip.trimEnd) / activeClip.speed
+    const progress = effectiveDuration > 0
+      ? Math.min(1, Math.max(0, (currentTime - activeClip.startTime) / effectiveDuration))
+      : 0
+    const lerp = (start: number, end: number) => start + (end - start) * progress
+
+    const scale = Math.max(0.1, lerp(motion.startScale, motion.endScale))
+    const slideXPercent = lerp(motion.startX, motion.endX)
+    const slideYPercent = lerp(motion.startY, motion.endY)
+    const tx = (stageSize.width * slideXPercent) / 100
+    const ty = (stageSize.height * slideYPercent) / 100
+
+    return {
+      scale,
+      tx,
+      ty,
+      originX: Math.min(100, Math.max(0, motion.anchorX)),
+      originY: Math.min(100, Math.max(0, motion.anchorY)),
+    }
+  }, [clips, currentTime, stageSize.height, stageSize.width])
+
   const bgStyle = background.type === 'color'
     ? { backgroundColor: background.value }
     : { backgroundImage: `url(${background.src})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
@@ -152,9 +190,9 @@ function App() {
                 style={{
                   width: `${Math.max(stageSize.width, 220)}px`,
                   height: `${Math.max(stageSize.height, 220 / stageRatio)}px`,
-                  transform: `scale(${safePreviewZoom})`,
-                  transformOrigin: 'center center',
-                  transition: 'transform 0.15s ease',
+                  transform: `translate3d(${stageMotion.tx}px, ${stageMotion.ty}px, 0) scale(${safePreviewZoom * stageMotion.scale})`,
+                  transformOrigin: `${stageMotion.originX}% ${stageMotion.originY}%`,
+                  transition: isPlaying ? 'none' : 'transform 0.15s ease',
                   ...bgStyle,
                 }}
               >
