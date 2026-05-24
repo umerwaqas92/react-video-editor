@@ -19,7 +19,7 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stageHostRef = useRef<HTMLDivElement>(null)
   const restoredMediaRef = useRef(false)
-  const { clips, currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding, isPlaying, selectedClipId, selectedZoomMotionId, zoomMotions, isBackgroundPickerOpen, setBackgroundPickerOpen } = useEditorStore()
+  const { clips, currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding, isPlaying, selectedClipId, selectedZoomMotionId, isBackgroundPickerOpen, setBackgroundPickerOpen } = useEditorStore()
   const [stageSize, setStageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>(null)
   const { togglePlay, seek } = usePlayer(canvasRef)
@@ -197,12 +197,11 @@ function App() {
     ? { backgroundColor: background.value }
     : { backgroundImage: `url(${background.src})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
 
-  const hasSelection = selectedClipId !== null || selectedZoomMotionId !== null
-
   // Auto-open inline panel when clip or zoom motion is selected
   useEffect(() => {
     if (selectedZoomMotionId) setMobilePanel('zoom')
     else if (selectedClipId) setMobilePanel('trim')
+    else setMobilePanel(null)
   }, [selectedClipId, selectedZoomMotionId])
 
   return (
@@ -256,8 +255,8 @@ function App() {
                 <ZoomIn className="w-3.5 h-3.5" />
               </button>
             </div>
-            <TrimEditor />
-            <ZoomEditor />
+            {selectedClipId && <TrimEditor />}
+            {selectedZoomMotionId && <ZoomEditor />}
           </div>
         </div>
 
@@ -279,28 +278,32 @@ function App() {
               <PaintBucket className="w-3.5 h-3.5" />
               BG
             </button>
-            <button
-              onClick={() => setMobilePanel(mobilePanel === 'trim' ? null : 'trim')}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                mobilePanel === 'trim'
-                  ? 'bg-gray-800 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } ${!hasSelection ? 'opacity-40' : ''}`}
-            >
-              <Scissors className="w-3.5 h-3.5" />
-              Trim
-            </button>
-            <button
-              onClick={() => setMobilePanel(mobilePanel === 'zoom' ? null : 'zoom')}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                mobilePanel === 'zoom'
-                  ? 'bg-gray-800 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              } ${zoomMotions.length === 0 ? 'opacity-40' : ''}`}
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-              Zoom
-            </button>
+            {selectedClipId && (
+              <button
+                onClick={() => setMobilePanel(mobilePanel === 'trim' ? null : 'trim')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                  mobilePanel === 'trim'
+                    ? 'bg-gray-800 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <Scissors className="w-3.5 h-3.5" />
+                Trim
+              </button>
+            )}
+            {selectedZoomMotionId && (
+              <button
+                onClick={() => setMobilePanel(mobilePanel === 'zoom' ? null : 'zoom')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                  mobilePanel === 'zoom'
+                    ? 'bg-gray-800 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+                Zoom
+              </button>
+            )}
             <div className="flex-1" />
             <div className="flex items-center gap-0.5">
               <button

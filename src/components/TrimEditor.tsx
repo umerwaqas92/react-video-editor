@@ -2,17 +2,22 @@ import { useCallback } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
-import { Trash2, X } from 'lucide-react'
+import { Copy, Trash2, X } from 'lucide-react'
 const SPEED_PRESETS = [0.25, 0.5, 1, 1.5, 2, 3, 4]
 
 export function TrimEditor() {
-  const { selectedClipId, clips, updateClip, removeClip, selectClip } = useEditorStore()
+  const { selectedClipId, clips, updateClip, removeClip, duplicateClip, selectClip } = useEditorStore()
   const clip = clips.find(c => c.id === selectedClipId) ?? null
 
   const handleDelete = useCallback(() => {
     if (!clip) return
     removeClip(clip.id)
   }, [clip, removeClip])
+
+  const handleDuplicate = useCallback(() => {
+    if (!clip) return
+    duplicateClip(clip.id)
+  }, [clip, duplicateClip])
 
   const handleRemoveMotion = useCallback(() => {
     if (!clip) return
@@ -37,6 +42,9 @@ export function TrimEditor() {
           <span className="text-[10px] text-gray-400 font-mono flex-shrink-0">{effectiveDuration.toFixed(1)}s</span>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={handleDuplicate} title="Duplicate">
+            <Copy className="w-3 h-3" />
+          </Button>
           <Button variant="destructive" size="sm" className="h-6 px-2 text-[10px]" onClick={handleDelete}>
             <Trash2 className="w-3 h-3" />
           </Button>

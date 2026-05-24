@@ -10,7 +10,7 @@ function Slider({ className, min = 0, max = 100, step = 1, value, onValueChange,
 
   // Sync local value when external value changes (and not dragging)
   const displayValue = dragging ? localValue : (value[0] ?? 0)
-  const percentage = ((displayValue - min) / (max - min)) * 100
+  const percentage = ((displayValue - Number(min)) / (Number(max) - Number(min))) * 100
 
   return (
     <div className={cn("relative flex w-full touch-none select-none items-center min-h-[44px]", className)} {...props}>

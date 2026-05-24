@@ -2,11 +2,16 @@ import { useCallback } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
-import { Trash2, X } from 'lucide-react'
+import { Copy, Trash2, X } from 'lucide-react'
 
 export function ZoomEditor() {
-  const { selectedZoomMotionId, zoomMotions, updateZoomMotion, removeZoomMotion, selectZoomMotion } = useEditorStore()
+  const { selectedZoomMotionId, zoomMotions, updateZoomMotion, duplicateZoomMotion, removeZoomMotion, selectZoomMotion } = useEditorStore()
   const motion = zoomMotions.find(m => m.id === selectedZoomMotionId) ?? null
+
+  const handleDuplicate = useCallback(() => {
+    if (!motion) return
+    duplicateZoomMotion(motion.id)
+  }, [motion, duplicateZoomMotion])
 
   const handleDelete = useCallback(() => {
     if (!motion) return
@@ -46,6 +51,9 @@ export function ZoomEditor() {
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-gray-800">Zoom Motion</span>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={handleDuplicate} title="Duplicate">
+            <Copy className="w-3 h-3" />
+          </Button>
           <Button variant="destructive" size="sm" className="h-6 px-2 text-[10px]" onClick={handleDelete}>
             <Trash2 className="w-3 h-3" />
           </Button>

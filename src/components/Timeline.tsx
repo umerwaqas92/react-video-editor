@@ -16,7 +16,7 @@ function getInterval(pps: number): number {
 }
 
 export function Timeline() {
-  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, removeZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion, isPlaying, setIsPlaying, playbackRate, setPlaybackRate, undo, redo, canUndo, canRedo, recalculateTimeline } = useEditorStore()
+  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion, isPlaying, playbackRate, setPlaybackRate, undo, redo, canUndo, canRedo, recalculateTimeline } = useEditorStore()
   const dragRef = useRef<{ clipId: string; fromIndex: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const seekRafRef = useRef<number | null>(null)
@@ -143,160 +143,158 @@ export function Timeline() {
 
   return (
     <div className="bg-white border-t border-gray-200 p-3">
-      {/* Toolbar — horizontally scrollable on mobile */}
-      <div className="overflow-x-auto pb-1 mb-2 -mx-3 px-3 scrollbar-hide">
-      <div className="flex items-center gap-1 whitespace-nowrap min-w-max">
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={undo} disabled={!canUndo} title="Undo">
-          <Undo className="w-3.5 h-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={redo} disabled={!canRedo} title="Redo">
-          <Redo className="w-3.5 h-3.5" />
-        </Button>
+      {/* Toolbar — two rows above the track */}
+      <div className="mb-2 space-y-1">
+        {/* Row 1: undo/redo, zoom, transport, play/pause, time */}
+        <div className="flex items-center gap-1 flex-wrap">
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={undo} disabled={!canUndo} title="Undo">
+            <Undo className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={redo} disabled={!canRedo} title="Redo">
+            <Redo className="w-3.5 h-3.5" />
+          </Button>
 
-        <div className="w-px h-4 bg-gray-200 mx-0.5" />
+          <div className="w-px h-4 bg-gray-200 mx-0.5" />
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => setTimelineZoom(Math.max(2, timelineZoom - 5))}
-        >
-          <ZoomOut className="w-3.5 h-3.5" />
-        </Button>
-        <input
-          type="range"
-          min={2}
-          max={200}
-          value={timelineZoom}
-          onChange={e => setTimelineZoom(Number(e.target.value))}
-          className="w-20 h-1 accent-gray-600"
-        />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => setTimelineZoom(Math.min(200, timelineZoom + 5))}
-        >
-          <ZoomIn className="w-3.5 h-3.5" />
-        </Button>
-        <span className="text-[10px] text-gray-400 font-mono ml-2">{timelineZoom}%</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => setTimelineZoom(Math.max(2, timelineZoom - 5))}
+          >
+            <ZoomOut className="w-3.5 h-3.5" />
+          </Button>
+          <input
+            type="range"
+            min={2}
+            max={200}
+            value={timelineZoom}
+            onChange={e => setTimelineZoom(Number(e.target.value))}
+            className="w-16 h-1 accent-gray-600"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => setTimelineZoom(Math.min(200, timelineZoom + 5))}
+          >
+            <ZoomIn className="w-3.5 h-3.5" />
+          </Button>
+          <span className="text-[10px] text-gray-400 font-mono">{timelineZoom}%</span>
 
-        <div className="w-px h-4 bg-gray-200 mx-1" />
+          <div className="w-px h-4 bg-gray-200 mx-1" />
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => seekTo(0)}
-          title="Go to start"
-        >
-          <SkipBack className="w-3.5 h-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => seekTo(duration)}
-          title="Go to end"
-        >
-          <SkipForward className="w-3.5 h-3.5" />
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => seekTo(0)}
+            title="Go to start"
+          >
+            <SkipBack className="w-3.5 h-3.5" />
+          </Button>
+          <button
+            onClick={() => { seekTo(currentTime - 1) }}
+            className="h-6 px-1.5 text-[10px] font-mono rounded bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+            title="Skip back 1 second"
+          >
+            -1s
+          </button>
+          <button
+            onClick={() => { seekTo(currentTime + 1) }}
+            className="h-6 px-1.5 text-[10px] font-mono rounded bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+            title="Skip forward 1 second"
+          >
+            +1s
+          </button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => seekTo(duration)}
+            title="Go to end"
+          >
+            <SkipForward className="w-3.5 h-3.5" />
+          </Button>
 
-        <div className="w-px h-4 bg-gray-200 mx-0.5" />
+          <div className="w-px h-4 bg-gray-200 mx-1" />
 
-        <button
-          onClick={() => { seekTo(currentTime - 5) }}
-          className="h-6 px-1.5 text-[10px] font-mono rounded bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
-          title="Skip back 5 seconds"
-        >
-          -5s
-        </button>
-        <button
-          onClick={() => { seekTo(currentTime + 5) }}
-          className="h-6 px-1.5 text-[10px] font-mono rounded bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
-          title="Skip forward 5 seconds"
-        >
-          +5s
-        </button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => {
+              const state = useEditorStore.getState()
+              if (state.totalDuration() === 0) return
+              if (state.isPlaying) {
+                state.setIsPlaying(false)
+              } else {
+                if (state.currentTime >= state.totalDuration()) state.setCurrentTime(0)
+                state.setIsPlaying(true)
+              }
+            }}
+            title="Play / Pause"
+          >
+            {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+          </Button>
 
-        <div className="w-px h-4 bg-gray-200 mx-0.5 hidden md:block" />
-
-        {/* Playback rate — visible on all screens */}
-        <div className="flex items-center gap-0.5">
-          {[1, 2, 3].map(rate => (
-            <button
-              key={rate}
-              onClick={() => setPlaybackRate(rate)}
-              className={`h-6 px-1.5 text-[10px] rounded font-mono cursor-pointer transition-colors ${
-                playbackRate === rate ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {rate}x
-            </button>
-          ))}
+          <span className="text-[10px] text-gray-500 font-mono select-none tabular-nums">
+            {formatTime(currentTime)} / {formatTime(totalDuration())}
+          </span>
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => {
-            const didSplit = splitClipAtTime(currentTime)
-            if (didSplit) seekToImmediate(currentTime)
-          }}
-          title="Split at playhead"
-          disabled={!canSplitAtCurrentTime}
-        >
-          <Scissors className="w-3.5 h-3.5" />
-        </Button>
+        {/* Row 2: playback rate, split, add zoom, recalculate timeline */}
+        <div className="flex items-center gap-1 flex-wrap">
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3].map(rate => (
+              <button
+                key={rate}
+                onClick={() => setPlaybackRate(rate)}
+                className={`h-6 px-1.5 text-[10px] rounded font-mono cursor-pointer transition-colors ${
+                  playbackRate === rate ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {rate}x
+              </button>
+            ))}
+          </div>
 
-        <div className="w-px h-4 bg-gray-200 mx-1" />
+          <div className="w-px h-4 bg-gray-200 mx-1" />
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => addZoomMotion(createZoomMotion({ startTime: currentTime }))}
-          title="Add zoom motion"
-        >
-          <ZoomIn className="w-3.5 h-3.5 text-amber-500" />
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => {
+              const didSplit = splitClipAtTime(currentTime)
+              if (didSplit) seekToImmediate(currentTime)
+            }}
+            title="Split at playhead"
+            disabled={!canSplitAtCurrentTime}
+          >
+            <Scissors className="w-3.5 h-3.5" />
+          </Button>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={recalculateTimeline}
-          title="Recalculate timeline (close gaps)"
-        >
-          <AlignStartHorizontal className="w-3.5 h-3.5" />
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => addZoomMotion(createZoomMotion({ startTime: currentTime }))}
+            title="Add zoom motion"
+          >
+            <ZoomIn className="w-3.5 h-3.5 text-amber-500" />
+          </Button>
 
-        <div className="w-px h-4 bg-gray-200 mx-1" />
-
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => {
-            const state = useEditorStore.getState()
-            if (state.totalDuration() === 0) return
-            if (state.isPlaying) {
-              state.setIsPlaying(false)
-            } else {
-              if (state.currentTime >= state.totalDuration()) state.setCurrentTime(0)
-              state.setIsPlaying(true)
-            }
-          }}
-          title="Play / Pause"
-        >
-          {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-        </Button>
-
-        <span className="text-[10px] text-gray-500 font-mono select-none tabular-nums">
-          {formatTime(currentTime)} / {formatTime(totalDuration())}
-        </span>
-      </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={recalculateTimeline}
+            title="Recalculate timeline (close gaps)"
+          >
+            <AlignStartHorizontal className="w-3.5 h-3.5" />
+          </Button>
+        </div>
       </div>
 
       {/* Clip track + ruler wrapped in single scrollable container */}
@@ -359,8 +357,8 @@ export function Timeline() {
 
           {/* Playhead */}
           <div
-            className="absolute top-0 bottom-0 z-20 cursor-ew-resize"
-            style={{ left: playheadX }}
+            className="absolute top-0 bottom-0 z-20 cursor-ew-resize flex flex-col items-center"
+            style={{ left: playheadX, width: '28px', marginLeft: '-14px' }}
             onMouseDown={(e) => {
               e.stopPropagation()
               e.preventDefault()
@@ -372,8 +370,8 @@ export function Timeline() {
               startScrubbing(e.touches[0].clientX)
             }}
           >
-            <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-red-500 -mt-0.5 ml-[-6px]" />
-            <div className="w-px bg-red-500 h-full ml-[-0.5px]" />
+            <div className="w-4 h-4 border-l-[10px] border-r-[10px] border-t-[12px] border-l-transparent border-r-transparent border-t-red-500 flex-shrink-0" />
+            <div className="w-[4px] bg-red-500 h-full flex-shrink-0 rounded-sm" />
           </div>
         </div>
 

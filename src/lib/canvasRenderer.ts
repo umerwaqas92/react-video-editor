@@ -53,11 +53,11 @@ export function preloadImage(src: string): Promise<HTMLImageElement> {
 export async function preloadAssets(clips: Clip[], background: Background) {
   const promises: Promise<unknown>[] = []
   if (background.type === 'image') {
-    promises.push(preloadImage(background.src))
+    promises.push(preloadImage(background.src).catch(() => {}))
   }
   for (const clip of clips) {
     if (clip.type === 'image') {
-      promises.push(preloadImage(clip.src))
+      promises.push(preloadImage(clip.src).catch(() => {}))
     }
   }
   await Promise.all(promises)

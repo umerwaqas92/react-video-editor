@@ -9,10 +9,11 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
   const resolvedRef = canvasRef || innerRef
   const previewAreaRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const mediaInputRef = useRef<HTMLInputElement>(null)
   const sizedRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [phoneWidth, setPhoneWidth] = useState(260)
-  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, setPreviewZoom, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect, zoomMotions, selectedZoomMotionId, updateZoomMotion } = useEditorStore()
+  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect, zoomMotions, selectedZoomMotionId, updateZoomMotion } = useEditorStore()
 
   useEffect(() => {
     preloadAssets(clips, background)
@@ -167,6 +168,28 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
     }
   }, [])
 
+  const processFile = useCallback(async (file: File) => {
+    const url = URL.createObjectURL(file)
+
+    if (file.type.startsWith('video/')) {
+      const video = document.createElement('video')
+      video.src = url
+      video.onloadedmetadata = async () => {
+        const clip = createClip({ type: 'video', src: url, name: file.name, duration: video.duration, naturalWidth: video.videoWidth || 1920, naturalHeight: video.videoHeight || 1080 })
+        const persisted = await saveMediaAsset(file, clip.id)
+        addClip({ ...clip, mediaStorageKey: persisted.mediaStorageKey, originalPath: persisted.originalPath })
+      }
+    } else if (file.type.startsWith('image/')) {
+      const img = new Image()
+      img.src = url
+      img.onload = async () => {
+        const clip = createClip({ type: 'image', src: url, name: file.name, duration: 5, naturalWidth: img.naturalWidth || 1920, naturalHeight: img.naturalHeight || 1080 })
+        const persisted = await saveMediaAsset(file, clip.id)
+        addClip({ ...clip, mediaStorageKey: persisted.mediaStorageKey, originalPath: persisted.originalPath })
+      }
+    }
+  }, [addClip])
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -174,29 +197,17 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
 
     const files = Array.from(e.dataTransfer.files)
     for (const file of files) {
-      const url = URL.createObjectURL(file)
-
-      if (file.type.startsWith('video/')) {
-        const video = document.createElement('video')
-        video.src = url
-        video.onloadedmetadata = async () => {
-          console.log('[DropVideo] metadata:', { n: file.name, d: video.duration, w: video.videoWidth, h: video.videoHeight })
-          const clip = createClip({ type: 'video', src: url, name: file.name, duration: video.duration, naturalWidth: video.videoWidth || 1920, naturalHeight: video.videoHeight || 1080 })
-          const persisted = await saveMediaAsset(file, clip.id)
-          addClip({ ...clip, mediaStorageKey: persisted.mediaStorageKey, originalPath: persisted.originalPath })
-        }
-      } else if (file.type.startsWith('image/')) {
-        const img = new Image()
-        img.src = url
-        img.onload = async () => {
-          console.log('[DropImage] loaded:', { n: file.name, w: img.naturalWidth, h: img.naturalHeight })
-          const clip = createClip({ type: 'image', src: url, name: file.name, duration: 5, naturalWidth: img.naturalWidth || 1920, naturalHeight: img.naturalHeight || 1080 })
-          const persisted = await saveMediaAsset(file, clip.id)
-          addClip({ ...clip, mediaStorageKey: persisted.mediaStorageKey, originalPath: persisted.originalPath })
-        }
-      }
+      processFile(file)
     }
-  }, [addClip])
+  }, [processFile])
+
+  const handleMediaSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    for (const file of files) {
+      processFile(file)
+    }
+    e.target.value = ''
+  }, [processFile])
 
   // Compute zoom from active zoom motions
   // Fixed timing: 0.5s zoom-in, hold at peak, 0.5s zoom-out
@@ -271,16 +282,27 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
                 className="w-full h-full block bg-black"
               />
               {clips.length === 0 && !isDragOver && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black">
+                <button
+                  onClick={() => mediaInputRef.current?.click()}
+                  className="absolute inset-0 flex items-center justify-center bg-black cursor-pointer hover:bg-black/80 transition-colors"
+                >
                   <div className="text-center text-white/60">
                     <svg className="w-10 h-10 mx-auto mb-2 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <p className="text-xs">Add media to preview</p>
+                    <p className="text-xs">Tap to add videos or images</p>
                   </div>
-                </div>
+                </button>
               )}
+              <input
+                ref={mediaInputRef}
+                type="file"
+                accept="video/*,image/*"
+                multiple
+                className="hidden"
+                onChange={handleMediaSelect}
+              />
 
               {/* Zoom motion indicator — only when selected AND active */}
               {selectedZoomMotionId && motionZoom > 1.01 && (

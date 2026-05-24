@@ -24,6 +24,7 @@ interface EditorStore {
   isPlaying: boolean
 
   addClip: (clip: Clip) => void
+  duplicateClip: (id: string) => void
   removeClip: (id: string) => void
   updateClip: (id: string, updates: Partial<Clip>) => void
   selectClip: (id: string | null) => void
@@ -45,6 +46,7 @@ interface EditorStore {
   recalculateTimeline: () => void
 
   addZoomMotion: (motion: ZoomMotion) => void
+  duplicateZoomMotion: (id: string) => void
   removeZoomMotion: (id: string) => void
   updateZoomMotion: (id: string, updates: Partial<ZoomMotion>) => void
   selectZoomMotion: (id: string | null) => void
@@ -75,8 +77,6 @@ export function createZoomMotion(overrides?: Partial<ZoomMotion>): ZoomMotion {
     ...overrides,
   }
 }
-
-type Snapshot = Pick<EditorStore, 'clips' | 'zoomMotions' | 'background' | 'devicePadding' | 'stageAspect' | 'deviceAspect'>
 
 function takeSnapshot(state: EditorStore): string {
   return JSON.stringify({
@@ -166,6 +166,29 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     const lastClip = state.clips[state.clips.length - 1]
     const startTime = lastClip ? lastClip.startTime + get().getEffectiveDuration(lastClip) : 0
     set({ clips: [...state.clips, { ...clip, startTime }] })
+  },
+
+  duplicateClip: (id) => {
+    get()._pushSnapshot()
+    const state = get()
+    const index = state.clips.findIndex(c => c.id === id)
+    if (index === -1) return
+    const original = state.clips[index]
+    const duplicate: Clip = {
+      ...original,
+      id: generateId(),
+      startTime: original.startTime + get().getEffectiveDuration(original),
+    }
+    const dupeDuration = get().getEffectiveDuration(duplicate)
+    const newClips = [
+      ...state.clips.slice(0, index + 1),
+      duplicate,
+      ...state.clips.slice(index + 1).map(c => ({
+        ...c,
+        startTime: c.startTime + dupeDuration,
+      })),
+    ]
+    set({ clips: newClips, selectedClipId: duplicate.id, selectedZoomMotionId: null })
   },
 
   removeClip: (id) => {
@@ -310,6 +333,19 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   addZoomMotion: (motion) => {
     get()._pushSnapshot()
     set(state => ({ zoomMotions: [...state.zoomMotions, motion] }))
+  },
+
+  duplicateZoomMotion: (id) => {
+    get()._pushSnapshot()
+    const state = get()
+    const original = state.zoomMotions.find(m => m.id === id)
+    if (!original) return
+    const duplicate: ZoomMotion = {
+      ...original,
+      id: `zoom_${Date.now()}_${++idCounter}`,
+      startTime: original.startTime + original.duration + 0.5,
+    }
+    set({ zoomMotions: [...state.zoomMotions, duplicate], selectedZoomMotionId: duplicate.id, selectedClipId: null })
   },
 
   removeZoomMotion: (id) => {

@@ -11,6 +11,12 @@ const COLOR_PRESETS = [
 ]
 const STAGE_ASPECT_PRESETS = ['16/9', '9/16', '1/1', '4/5', '21/9']
 
+const BG_IMAGE_PRESETS = [
+  '/_.jpeg',
+  '/Статичный фон для анимации_сторис.jpeg',
+  '/Grid, Lines, Reel_ Free Stock Video.jpeg',
+].map(s => encodeURI(s))
+
 export function BackgroundPicker() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const {
@@ -108,6 +114,21 @@ export function BackgroundPicker() {
 
       <div>
         <p className="text-[10px] text-gray-400 mb-1">Image</p>
+        <div className="flex gap-1 flex-wrap mb-1.5">
+          {BG_IMAGE_PRESETS.map(src => (
+            <button
+              key={src}
+              onClick={() => setBackground({ type: 'image', src })}
+              className={`w-8 h-8 md:w-6 md:h-6 rounded overflow-hidden border-2 cursor-pointer transition-colors ${
+                background.type === 'image' && background.src === src
+                  ? 'border-gray-800 ring-1 ring-gray-300'
+                  : 'border-gray-200 hover:border-gray-400'
+              }`}
+            >
+              <img src={src} alt="" className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
         <Button variant="outline" size="sm" className="h-7 text-[11px] w-full" onClick={() => fileInputRef.current?.click()}>
           Upload Image
         </Button>
