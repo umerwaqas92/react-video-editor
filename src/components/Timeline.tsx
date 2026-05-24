@@ -121,11 +121,29 @@ export function Timeline() {
       </div>
 
       {/* Clip track + ruler wrapped in single scrollable container */}
-      <div ref={scrollRef} className="overflow-x-auto cursor-pointer" onClick={handleTrackClick}>
+      <div ref={scrollRef} className="cursor-pointer" style={{ overflowX: 'auto', overflowY: 'clip' }} onClick={handleTrackClick}>
+        {/* Time ruler — at the top */}
+        {clips.length > 0 && (
+          <div className="mb-1 pb-1 border-b border-white/5" style={{ height: 24 }}>
+            <div className="relative h-full" style={{ minWidth: totalWidth + 50 }}>
+              {rulerLabels.map(({ pos, label }) => (
+                <div
+                  key={pos}
+                  className="absolute bottom-0 text-[10px] text-white/30 font-mono select-none"
+                  style={{ left: pos }}
+                >
+                  <div className="w-px h-1.5 bg-white/10 mt-0.5" />
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Clip track */}
         <div
-          className="flex items-center gap-1 relative" style={{ minHeight: 44 }}
-          style={{ minWidth: totalWidth + 50 }}
+          className="flex items-center gap-1 relative"
+          style={{ minWidth: totalWidth + 50, minHeight: 44 }}
         >
           {clips.map((clip, index) => (
             <TimelineClipItem
@@ -162,24 +180,6 @@ export function Timeline() {
             <div className="w-px bg-red-500 h-full ml-[-0.5px]" />
           </div>
         </div>
-
-        {/* Time ruler — inside the scrollable wrapper so scrollbar sits below it */}
-        {clips.length > 0 && (
-          <div className="mt-2 border-t border-white/5 pt-2" style={{ height: 24 }}>
-            <div className="relative h-full" style={{ minWidth: totalWidth + 50 }}>
-              {rulerLabels.map(({ pos, label }) => (
-                <div
-                  key={pos}
-                  className="absolute top-0 text-[10px] text-white/30 font-mono select-none"
-                  style={{ left: pos }}
-                >
-                  <div className="w-px h-1.5 bg-white/10 mb-0.5" />
-                  {label}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
