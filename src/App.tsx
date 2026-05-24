@@ -11,6 +11,7 @@ import { useEditorStore } from '@/store/editorStore'
 import { loadMediaAssetUrl } from '@/lib/mediaStorage'
 import { clearMediaCache } from '@/lib/canvasRenderer'
 import { ZoomIn, ZoomOut, PaintBucket, Scissors } from 'lucide-react'
+import { BottomSheet } from '@/components/ui/bottom-sheet'
 import type { Clip } from '@/types'
 
 type MobilePanel = 'background' | 'trim' | 'zoom' | null
@@ -200,20 +201,11 @@ function App() {
   const closeMobilePanel = () => setMobilePanel(null)
   const hasSelection = selectedClipId !== null || selectedZoomMotionId !== null
 
-  // Lock body scroll when bottom sheet is open on mobile
-  useEffect(() => {
-    if (mobilePanel) {
-      const prev = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
-      return () => { document.body.style.overflow = prev }
-    }
-  }, [mobilePanel])
-
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       <Header exporting={exporting} exportProgress={exportProgress} onExport={startExport} onCancelExport={cancelExport} />
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-        <div className="flex-1 md:flex-[1] flex-[0.45] flex overflow-hidden gap-3 p-2 md:p-3">
+        <div className="flex-1 flex overflow-hidden gap-3 p-2 md:p-3">
           {/* Background Picker — Desktop sidebar */}
           <div className="hidden md:block w-56 shrink-0">
             <BackgroundPicker />
@@ -334,61 +326,16 @@ function App() {
         <Timeline onClipLongPress={() => setMobilePanel('trim')} onZoomLongPress={() => setMobilePanel('zoom')} />
       </div>
 
-      {/* Mobile overlays */}
-      {mobilePanel && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          {/* Backdrop — closes on tap */}
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={closeMobilePanel}
-            onTouchStart={(e) => { e.stopPropagation(); closeMobilePanel() }}
-          />
-
-          {/* Bottom sheet */}
-          <div
-            className="absolute bottom-0 left-0 right-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white shadow-xl pointer-events-auto"
-            style={{ overscrollBehavior: 'contain', touchAction: 'manipulation' }}
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchMove={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            {/* Drag handle + close button */}
-            <div className="flex items-center justify-between px-4 pt-2 pb-1">
-              <div className="w-10" />
-              <div className="w-10 h-1 rounded-full bg-gray-300" />
-              <button
-                onClick={closeMobilePanel}
-                className="w-10 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 cursor-pointer"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {mobilePanel === 'background' && (
-              <div className="p-3">
-                <BackgroundPicker />
-              </div>
-            )}
-            {mobilePanel === 'trim' && (
-              <div className="p-3 flex justify-center">
-                <TrimEditor />
-              </div>
-            )}
-            {mobilePanel === 'zoom' && (
-              <div className="p-3 flex justify-center">
-                <ZoomEditor />
-              </div>
-            )}
-
-            {/* Safe area spacer for phones with home indicator */}
-            <div className="h-6" />
-          </div>
-        </div>
-      )}
+      {/* Mobile bottom sheets via Radix Dialog */}
+      <BottomSheet open={mobilePanel !== null} onClose={closeMobilePanel}>
+        {mobilePanel === 'background' && <BackgroundPicker />}
+        {mobilePanel === 'trim' && (
+          <div className="flex justify-center"><TrimEditor /></div>
+        )}
+        {mobilePanel === 'zoom' && (
+          <div className="flex justify-center"><ZoomEditor /></div>
+        )}
+      </BottomSheet>
     </div>
   )
 }
