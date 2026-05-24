@@ -200,11 +200,20 @@ function App() {
   const closeMobilePanel = () => setMobilePanel(null)
   const hasSelection = selectedClipId !== null || selectedZoomMotionId !== null
 
+  // Lock body scroll when bottom sheet is open on mobile
+  useEffect(() => {
+    if (mobilePanel) {
+      const prev = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => { document.body.style.overflow = prev }
+    }
+  }, [mobilePanel])
+
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       <Header exporting={exporting} exportProgress={exportProgress} onExport={startExport} onCancelExport={cancelExport} />
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-        <div className="flex-1 flex overflow-hidden gap-3 p-2 md:p-3">
+        <div className="flex-1 md:flex-[1] flex-[0.45] flex overflow-hidden gap-3 p-2 md:p-3">
           {/* Background Picker — Desktop sidebar */}
           <div className="hidden md:block w-56 shrink-0">
             <BackgroundPicker />
@@ -327,11 +336,23 @@ function App() {
 
       {/* Mobile overlays */}
       {mobilePanel && (
-        <div className="fixed inset-0 z-50 md:hidden" onClick={closeMobilePanel}>
-          <div className="absolute inset-0 bg-black/40" />
+        <div className="fixed inset-0 z-50 md:hidden">
+          {/* Backdrop — closes on tap */}
           <div
-            className="absolute bottom-0 left-0 right-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white shadow-xl"
+            className="absolute inset-0 bg-black/40"
+            onClick={closeMobilePanel}
+            onTouchStart={(e) => { e.stopPropagation(); closeMobilePanel() }}
+          />
+
+          {/* Bottom sheet */}
+          <div
+            className="absolute bottom-0 left-0 right-0 max-h-[70vh] overflow-y-auto rounded-t-2xl bg-white shadow-xl pointer-events-auto"
+            style={{ overscrollBehavior: 'contain', touchAction: 'manipulation' }}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             {/* Drag handle + close button */}
             <div className="flex items-center justify-between px-4 pt-2 pb-1">

@@ -143,160 +143,112 @@ export function Timeline({ onClipLongPress, onZoomLongPress }: { onClipLongPress
 
   return (
     <div className="bg-white border-t border-gray-200 p-3">
-      {/* Toolbar — horizontally scrollable on mobile */}
-      <div className="overflow-x-auto pb-1 mb-2 -mx-3 px-3 scrollbar-hide">
-      <div className="flex items-center gap-1 whitespace-nowrap min-w-max">
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={undo} disabled={!canUndo} title="Undo">
-          <Undo className="w-3.5 h-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={redo} disabled={!canRedo} title="Redo">
-          <Redo className="w-3.5 h-3.5" />
-        </Button>
+      {/* Toolbar — two rows on mobile */}
+      <div className="space-y-1 mb-2">
+        {/* Row 1: Navigation + Playback */}
+        <div className="overflow-x-auto scrollbar-hide -mx-3 px-3">
+        <div className="flex items-center gap-1 whitespace-nowrap min-w-max">
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => seekTo(0)} title="Go to start">
+            <SkipBack className="w-3.5 h-3.5" />
+          </Button>
+          <button
+            onClick={() => { seekTo(currentTime - 5) }}
+            className="h-6 px-1.5 text-[10px] font-mono rounded bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+          >-5s</button>
 
-        <div className="w-px h-4 bg-gray-200 mx-0.5" />
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => {
+              const state = useEditorStore.getState()
+              if (state.totalDuration() === 0) return
+              if (state.isPlaying) { state.setIsPlaying(false) }
+              else { if (state.currentTime >= state.totalDuration()) state.setCurrentTime(0); state.setIsPlaying(true) }
+            }}
+            title="Play / Pause"
+          >
+            {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+          </Button>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => setTimelineZoom(Math.max(2, timelineZoom - 5))}
-        >
-          <ZoomOut className="w-3.5 h-3.5" />
-        </Button>
-        <input
-          type="range"
-          min={2}
-          max={200}
-          value={timelineZoom}
-          onChange={e => setTimelineZoom(Number(e.target.value))}
-          className="w-20 h-1 accent-gray-600"
-        />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => setTimelineZoom(Math.min(200, timelineZoom + 5))}
-        >
-          <ZoomIn className="w-3.5 h-3.5" />
-        </Button>
-        <span className="text-[10px] text-gray-400 font-mono ml-2">{timelineZoom}%</span>
+          <button
+            onClick={() => { seekTo(currentTime + 5) }}
+            className="h-6 px-1.5 text-[10px] font-mono rounded bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
+          >+5s</button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => seekTo(duration)} title="Go to end">
+            <SkipForward className="w-3.5 h-3.5" />
+          </Button>
 
-        <div className="w-px h-4 bg-gray-200 mx-1" />
+          <span className="text-[10px] text-gray-500 font-mono select-none tabular-nums ml-1">
+            {formatTime(currentTime)} / {formatTime(totalDuration())}
+          </span>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => seekTo(0)}
-          title="Go to start"
-        >
-          <SkipBack className="w-3.5 h-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => seekTo(duration)}
-          title="Go to end"
-        >
-          <SkipForward className="w-3.5 h-3.5" />
-        </Button>
+          <div className="w-px h-4 bg-gray-200 mx-1" />
 
-        <div className="w-px h-4 bg-gray-200 mx-0.5" />
-
-        <button
-          onClick={() => { seekTo(currentTime - 5) }}
-          className="h-6 px-1.5 text-[10px] font-mono rounded bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
-          title="Skip back 5 seconds"
-        >
-          -5s
-        </button>
-        <button
-          onClick={() => { seekTo(currentTime + 5) }}
-          className="h-6 px-1.5 text-[10px] font-mono rounded bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer"
-          title="Skip forward 5 seconds"
-        >
-          +5s
-        </button>
-
-        <div className="w-px h-4 bg-gray-200 mx-0.5 hidden md:block" />
-
-        {/* Playback rate — visible on all screens */}
-        <div className="flex items-center gap-0.5">
-          {[1, 2, 3].map(rate => (
-            <button
-              key={rate}
-              onClick={() => setPlaybackRate(rate)}
-              className={`h-6 px-1.5 text-[10px] rounded font-mono cursor-pointer transition-colors ${
-                playbackRate === rate ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              {rate}x
-            </button>
-          ))}
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setTimelineZoom(Math.max(2, timelineZoom - 5))}>
+            <ZoomOut className="w-3.5 h-3.5" />
+          </Button>
+          <input type="range" min={2} max={200} value={timelineZoom}
+            onChange={e => setTimelineZoom(Number(e.target.value))}
+            className="w-16 md:w-20 h-1 accent-gray-600"
+          />
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setTimelineZoom(Math.min(200, timelineZoom + 5))}>
+            <ZoomIn className="w-3.5 h-3.5" />
+          </Button>
+          <span className="text-[10px] text-gray-400 font-mono">{timelineZoom}%</span>
+        </div>
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => {
-            const didSplit = splitClipAtTime(currentTime)
-            if (didSplit) seekToImmediate(currentTime)
-          }}
-          title="Split at playhead"
-          disabled={!canSplitAtCurrentTime}
-        >
-          <Scissors className="w-3.5 h-3.5" />
-        </Button>
+        {/* Row 2: Edit actions */}
+        <div className="overflow-x-auto scrollbar-hide -mx-3 px-3">
+        <div className="flex items-center gap-1 whitespace-nowrap min-w-max">
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={undo} disabled={!canUndo} title="Undo">
+            <Undo className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={redo} disabled={!canRedo} title="Redo">
+            <Redo className="w-3.5 h-3.5" />
+          </Button>
 
-        <div className="w-px h-4 bg-gray-200 mx-1" />
+          <div className="w-px h-4 bg-gray-200 mx-0.5" />
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => addZoomMotion(createZoomMotion({ startTime: currentTime }))}
-          title="Add zoom motion"
-        >
-          <ZoomIn className="w-3.5 h-3.5 text-amber-500" />
-        </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6"
+            onClick={() => {
+              const didSplit = splitClipAtTime(currentTime)
+              if (didSplit) seekToImmediate(currentTime)
+            }}
+            title="Split at playhead"
+            disabled={!canSplitAtCurrentTime}
+          >
+            <Scissors className="w-3.5 h-3.5" />
+          </Button>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={recalculateTimeline}
-          title="Recalculate timeline (close gaps)"
-        >
-          <AlignStartHorizontal className="w-3.5 h-3.5" />
-        </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6"
+            onClick={() => addZoomMotion(createZoomMotion({ startTime: currentTime }))}
+            title="Add zoom motion"
+          >
+            <ZoomIn className="w-3.5 h-3.5 text-amber-500" />
+          </Button>
 
-        <div className="w-px h-4 bg-gray-200 mx-1" />
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={recalculateTimeline} title="Recalculate timeline">
+            <AlignStartHorizontal className="w-3.5 h-3.5" />
+          </Button>
 
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => {
-            const state = useEditorStore.getState()
-            if (state.totalDuration() === 0) return
-            if (state.isPlaying) {
-              state.setIsPlaying(false)
-            } else {
-              if (state.currentTime >= state.totalDuration()) state.setCurrentTime(0)
-              state.setIsPlaying(true)
-            }
-          }}
-          title="Play / Pause"
-        >
-          {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-        </Button>
+          <div className="w-px h-4 bg-gray-200 mx-0.5" />
 
-        <span className="text-[10px] text-gray-500 font-mono select-none tabular-nums">
-          {formatTime(currentTime)} / {formatTime(totalDuration())}
-        </span>
-      </div>
+          {/* Playback rate */}
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3].map(rate => (
+              <button
+                key={rate}
+                onClick={() => setPlaybackRate(rate)}
+                className={`h-6 px-1.5 text-[10px] rounded font-mono cursor-pointer transition-colors ${
+                  playbackRate === rate ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >{rate}x</button>
+            ))}
+          </div>
+        </div>
+        </div>
       </div>
 
       {/* Clip track + ruler wrapped in single scrollable container */}
