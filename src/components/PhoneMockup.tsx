@@ -1,27 +1,26 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { drawFrame, preloadAssets, sizeCanvas, seekAllVideos, setOnSeeked } from '@/lib/canvasRenderer'
-import { useEditorStore } from '@/store/editorStore'
-import { ZoomIn, ZoomOut } from 'lucide-react'
+import { useEditorStore, createClip } from '@/store/editorStore'
+import { ZoomIn, ZoomOut, Upload } from 'lucide-react'
 
 export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
   const innerRef = useRef<HTMLCanvasElement>(null)
   const resolvedRef = canvasRef || innerRef
   const containerRef = useRef<HTMLDivElement>(null)
   const sizedRef = useRef(false)
-  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, setPreviewZoom } = useEditorStore()
+  const [isDragOver, setIsDragOver] = useState(false)
+  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, setPreviewZoom, addClip } = useEditorStore()
 
   useEffect(() => {
     preloadAssets(clips, background)
   }, [clips, background])
 
-  // Seek videos when clips change (new media added/updated)
   useEffect(() => {
     if (isPlaying) return
     const s = useEditorStore.getState()
     seekAllVideos(s.clips, s.currentTime)
   }, [clips, isPlaying])
 
-  // Canvas sizing — draws first frame after sizing
   useEffect(() => {
     const canvas = resolvedRef.current
     if (!canvas) return
@@ -45,7 +44,6 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
     return () => observer.disconnect()
   }, [resolvedRef])
 
-  // Register seeked callback — fires when video frame is ready after a seek
   useEffect(() => {
     setOnSeeked(() => {
       const canvas = resolvedRef.current
@@ -58,13 +56,56 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
     return () => setOnSeeked(null)
   }, [resolvedRef])
 
-  // Redraw on state change when NOT playing
   useEffect(() => {
     if (isPlaying) return
     const canvas = resolvedRef.current
     if (!canvas || canvas.width === 0 || canvas.height === 0) return
     drawFrame(canvas, clips, background, currentTime)
   }, [clips, background, currentTime, isPlaying, resolvedRef])
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.dataTransfer.types.includes('Files')) {
+      e.dataTransfer.dropEffect = 'copy'
+      setIsDragOver(true)
+    }
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Only set false if leaving the drop zone itself
+    if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+
+    const files = Array.from(e.dataTransfer.files)
+    for (const file of files) {
+      const url = URL.createObjectURL(file)
+
+      if (file.type.startsWith('video/')) {
+        const video = document.createElement('video')
+        video.src = url
+        video.onloadedmetadata = () => {
+          addClip(createClip({ type: 'video', src: url, name: file.name, duration: video.duration }))
+        }
+      } else if (file.type.startsWith('image/')) {
+        const img = new Image()
+        img.src = url
+        img.onload = () => {
+          addClip(createClip({ type: 'image', src: url, name: file.name, duration: 5 }))
+        }
+      }
+    }
+  }, [addClip])
 
   return (
     <div className="relative w-full h-full flex items-center justify-center overflow-hidden" style={{ padding: `${devicePadding}px` }}>
@@ -77,18 +118,23 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
         }}
       >
         <div className="relative" style={{ width: 340 }}>
-          <div className="relative bg-neutral-900 rounded-[3rem] p-2.5 border-[3px] border-neutral-700 shadow-2xl">
+          <div className={`relative bg-neutral-900 rounded-[3rem] p-2.5 border-[3px] shadow-2xl transition-colors ${
+            isDragOver ? 'border-blue-400 shadow-blue-500/20' : 'border-neutral-700'
+          }`}>
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 bg-black rounded-b-2xl z-10" />
             <div
               ref={containerRef}
               className="relative bg-black rounded-[2.5rem] overflow-hidden"
               style={{ aspectRatio: '9/16' }}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
               <canvas
                 ref={resolvedRef}
                 className="w-full h-full block"
               />
-              {clips.length === 0 && (
+              {clips.length === 0 && !isDragOver && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/80">
                   <div className="text-center text-white/60">
                     <svg className="w-10 h-10 mx-auto mb-2 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -99,12 +145,21 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
                   </div>
                 </div>
               )}
+
+              {/* Drag overlay */}
+              {isDragOver && (
+                <div className="absolute inset-0 flex items-center justify-center bg-blue-500/20 border-2 border-blue-400 border-dashed rounded-[2.5rem] z-10">
+                  <div className="text-center">
+                    <Upload className="w-8 h-8 mx-auto mb-1 text-blue-400" />
+                    <p className="text-sm text-white font-medium">Drop to add</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Zoom controls — bottom right */}
       <div className="absolute bottom-3 right-3 z-20 flex items-center gap-0.5 bg-white/90 backdrop-blur border border-gray-200 rounded-lg shadow-lg">
         <button
           onClick={() => setPreviewZoom(Math.max(0.25, previewZoom - 0.1))}
