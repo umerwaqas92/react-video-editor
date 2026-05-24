@@ -11,7 +11,6 @@ import { useEditorStore } from '@/store/editorStore'
 import { loadMediaAssetUrl } from '@/lib/mediaStorage'
 import { clearMediaCache } from '@/lib/canvasRenderer'
 import { ZoomIn, ZoomOut, PaintBucket, Scissors } from 'lucide-react'
-import { BottomSheet } from '@/components/ui/bottom-sheet'
 import type { Clip } from '@/types'
 
 type MobilePanel = 'background' | 'trim' | 'zoom' | null
@@ -198,7 +197,6 @@ function App() {
     ? { backgroundColor: background.value }
     : { backgroundImage: `url(${background.src})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
 
-  const closeMobilePanel = () => setMobilePanel(null)
   const hasSelection = selectedClipId !== null || selectedZoomMotionId !== null
 
   return (
@@ -229,49 +227,6 @@ function App() {
               </div>
             </div>
 
-            {/* Mobile-only: floating action buttons on the preview stage */}
-            <div className="absolute bottom-2 left-2 right-2 flex md:hidden items-center justify-center gap-1.5 z-10">
-              <button
-                onClick={() => {
-                  if (!isBackgroundPickerOpen) setBackgroundPickerOpen(true)
-                  setMobilePanel(mobilePanel === 'background' ? null : 'background')
-                }}
-                className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-medium shadow-lg backdrop-blur transition-colors cursor-pointer ${
-                  mobilePanel === 'background'
-                    ? 'bg-gray-800 text-white'
-                    : 'bg-white/90 text-gray-700 border border-gray-200'
-                }`}
-              >
-                <PaintBucket className="w-3.5 h-3.5" />
-                <span>BG</span>
-              </button>
-              <button
-                onClick={() => {
-                  if (hasSelection) setMobilePanel(mobilePanel === 'trim' ? null : 'trim')
-                }}
-                className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-medium shadow-lg backdrop-blur transition-colors cursor-pointer ${
-                  mobilePanel === 'trim'
-                    ? 'bg-gray-800 text-white'
-                    : 'bg-white/90 text-gray-700 border border-gray-200'
-                } ${!hasSelection ? 'opacity-40' : ''}`}
-              >
-                <Scissors className="w-3.5 h-3.5" />
-                <span>Trim</span>
-              </button>
-              <button
-                onClick={() => {
-                  if (zoomMotions.length > 0) setMobilePanel(mobilePanel === 'zoom' ? null : 'zoom')
-                }}
-                className={`flex items-center gap-1 px-3 py-2 rounded-full text-xs font-medium shadow-lg backdrop-blur transition-colors cursor-pointer ${
-                  mobilePanel === 'zoom'
-                    ? 'bg-gray-800 text-white'
-                    : 'bg-white/90 text-gray-700 border border-gray-200'
-                } ${zoomMotions.length === 0 ? 'opacity-40' : ''}`}
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-                <span>Zoom</span>
-              </button>
-            </div>
           </div>
 
           {/* Trim + Zoom Panels — Desktop sidebar */}
@@ -300,42 +255,79 @@ function App() {
           </div>
         </div>
 
-        {/* Mobile zoom controls — between preview and timeline */}
-        <div className="flex md:hidden items-center justify-center gap-2 px-3 pb-1">
-          <div className="bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-1.5 flex items-center justify-center gap-0.5">
+        {/* Mobile actions area: buttons row + inline panel content */}
+        <div className="flex md:hidden flex-col bg-white border-t border-gray-200 px-2 py-1.5 gap-1.5">
+          {/* Row 1: action toggle buttons + zoom */}
+          <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setPreviewZoom(Math.max(0.25, safePreviewZoom - 0.1))}
-              className="p-1.5 text-gray-400 hover:text-gray-700 cursor-pointer"
-              title="Zoom out preview"
+              onClick={() => {
+                if (!isBackgroundPickerOpen) setBackgroundPickerOpen(true)
+                setMobilePanel(mobilePanel === 'background' ? null : 'background')
+              }}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                mobilePanel === 'background'
+                  ? 'bg-gray-800 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
             >
-              <ZoomOut className="w-3.5 h-3.5" />
+              <PaintBucket className="w-3.5 h-3.5" />
+              BG
             </button>
-            <span className="text-[10px] text-gray-500 font-mono min-w-[36px] text-center select-none">
-              {Math.round(safePreviewZoom * 100)}%
-            </span>
             <button
-              onClick={() => setPreviewZoom(Math.min(1, safePreviewZoom + 0.1))}
-              className="p-1.5 text-gray-400 hover:text-gray-700 cursor-pointer"
-              title="Zoom in preview"
+              onClick={() => setMobilePanel(mobilePanel === 'trim' ? null : 'trim')}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                mobilePanel === 'trim'
+                  ? 'bg-gray-800 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              } ${!hasSelection ? 'opacity-40' : ''}`}
+            >
+              <Scissors className="w-3.5 h-3.5" />
+              Trim
+            </button>
+            <button
+              onClick={() => setMobilePanel(mobilePanel === 'zoom' ? null : 'zoom')}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                mobilePanel === 'zoom'
+                  ? 'bg-gray-800 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              } ${zoomMotions.length === 0 ? 'opacity-40' : ''}`}
             >
               <ZoomIn className="w-3.5 h-3.5" />
+              Zoom
             </button>
+            <div className="flex-1" />
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => setPreviewZoom(Math.max(0.25, safePreviewZoom - 0.1))}
+                className="p-1 text-gray-400 hover:text-gray-700 cursor-pointer"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[10px] text-gray-500 font-mono min-w-[32px] text-center select-none">
+                {Math.round(safePreviewZoom * 100)}%
+              </span>
+              <button
+                onClick={() => setPreviewZoom(Math.min(1, safePreviewZoom + 0.1))}
+                className="p-1 text-gray-400 hover:text-gray-700 cursor-pointer"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
+
+          {/* Row 2: active panel content (replaces dialog) */}
+          {mobilePanel && (
+            <div className="max-h-[40vh] overflow-y-auto">
+              {mobilePanel === 'background' && <BackgroundPicker />}
+              {mobilePanel === 'trim' && <TrimEditor />}
+              {mobilePanel === 'zoom' && <ZoomEditor />}
+            </div>
+          )}
         </div>
 
         <Timeline onClipLongPress={() => setMobilePanel('trim')} onZoomLongPress={() => setMobilePanel('zoom')} />
       </div>
 
-      {/* Mobile bottom sheets via Radix Dialog */}
-      <BottomSheet open={mobilePanel !== null} onClose={closeMobilePanel}>
-        {mobilePanel === 'background' && <BackgroundPicker />}
-        {mobilePanel === 'trim' && (
-          <div className="flex justify-center"><TrimEditor /></div>
-        )}
-        {mobilePanel === 'zoom' && (
-          <div className="flex justify-center"><ZoomEditor /></div>
-        )}
-      </BottomSheet>
     </div>
   )
 }
