@@ -12,7 +12,7 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
   const sizedRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [phoneWidth, setPhoneWidth] = useState(260)
-  const { clips, background, currentTime, isPlaying, devicePadding, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect } = useEditorStore()
+  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, setPreviewZoom, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect, zoomMotions, selectedZoomMotionId, updateZoomMotion } = useEditorStore()
 
   useEffect(() => {
     preloadAssets(clips, background)
@@ -198,13 +198,48 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
     }
   }, [addClip])
 
+  // Compute zoom from active zoom motions
+  let motionZoom = 1
+  let zoomOriginX = 0.5
+  let zoomOriginY = 0.5
+  for (const m of zoomMotions) {
+    const progress = (currentTime - m.startTime) / m.duration
+    if (progress >= 0 && progress <= 1) {
+      const p = progress <= 0.5
+        ? (m.peakScale - 1) * (progress / 0.5)
+        : (m.peakScale - 1) * ((1 - progress) / 0.5)
+      const scale = 1 + p
+      motionZoom *= scale
+      // Weighted average of zoom origins (last active motion takes priority)
+      if (scale > 1.01) {
+        zoomOriginX = m.targetX
+        zoomOriginY = m.targetY
+      }
+    }
+  }
+
+  // Computed transform for zoom-to-position effect
+  const zoomTransform = motionZoom > 1.01
+    ? `scale(${motionZoom})`
+    : undefined
+  const zoomOrigin = motionZoom > 1.01
+    ? `${zoomOriginX * 100}% ${zoomOriginY * 100}%`
+    : 'center center'
+
   return (
     <div
       ref={previewAreaRef}
       className="relative w-full h-full flex items-center justify-center overflow-hidden"
       style={{ padding: `${devicePadding}px` }}
     >
-      <div className="flex items-center justify-center w-full h-full">
+      <div
+        className="flex items-center justify-center w-full h-full"
+        style={{
+          transform: zoomTransform ? `scale(${previewZoom * motionZoom})` : `scale(${previewZoom})`,
+          transformOrigin: zoomOrigin,
+          transition: 'transform 0.1s ease',
+        }}
+      >
         <div className="relative" style={{ width: `${phoneWidth}px` }}>
           <div className={`relative bg-neutral-900 rounded-[3rem] p-2.5 border-[3px] shadow-2xl transition-colors ${
             isDragOver ? 'border-blue-400 shadow-blue-500/20' : 'border-neutral-700'
@@ -233,6 +268,71 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
                   </div>
                 </div>
               )}
+
+              {/* Zoom motion indicator */}
+              {motionZoom > 1.01 && (
+                <div className="absolute inset-0 pointer-events-none z-10">
+                  <div className="absolute top-2 left-2 w-3 h-3 border-t-2 border-l-2 border-amber-400 rounded-tl" />
+                  <div className="absolute top-2 right-2 w-3 h-3 border-t-2 border-r-2 border-amber-400 rounded-tr" />
+                  <div className="absolute bottom-2 left-2 w-3 h-3 border-b-2 border-l-2 border-amber-400 rounded-bl" />
+                  <div className="absolute bottom-2 right-2 w-3 h-3 border-b-2 border-r-2 border-amber-400 rounded-br" />
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-amber-500/80 text-white text-[10px] px-2 py-0.5 rounded-full font-mono">
+                    {motionZoom.toFixed(1)}x
+                  </div>
+                </div>
+              )}
+
+              {/* Draggable zoom target box — shown when zoom motion is selected */}
+              {selectedZoomMotionId && (() => {
+                const zm = zoomMotions.find(m => m.id === selectedZoomMotionId)
+                if (!zm) return null
+                const boxW = (100 / zm.peakScale) + '%'
+                const boxH = (100 / zm.peakScale) + '%'
+                const left = `calc(${zm.targetX * 100}% - ${100 / zm.peakScale / 2}%)`
+                const top = `calc(${zm.targetY * 100}% - ${100 / zm.peakScale / 2}%)`
+
+                const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  const screenEl = containerRef.current
+                  if (!screenEl) return
+                  const rect = screenEl.getBoundingClientRect()
+
+                  const onMove = (ev: MouseEvent | TouchEvent) => {
+                    const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                    const clientY = 'touches' in ev ? ev.touches[0].clientY : ev.clientY
+                    const nx = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+                    const ny = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
+                    updateZoomMotion(zm.id, { targetX: nx, targetY: ny })
+                  }
+                  const onUp = () => {
+                    document.removeEventListener('mousemove', onMove)
+                    document.removeEventListener('mouseup', onUp)
+                    document.removeEventListener('touchmove', onMove)
+                    document.removeEventListener('touchend', onUp)
+                  }
+                  document.addEventListener('mousemove', onMove)
+                  document.addEventListener('mouseup', onUp)
+                  document.addEventListener('touchmove', onMove)
+                  document.addEventListener('touchend', onUp)
+                }
+
+                return (
+                  <div
+                    className="absolute border-2 border-amber-400 border-dashed bg-amber-400/10 cursor-move z-20"
+                    style={{ left, top, width: boxW, height: boxH }}
+                    onMouseDown={handleDragStart}
+                    onTouchStart={handleDragStart}
+                  >
+                    {/* Center dot */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-amber-400 rounded-full" />
+                    {/* Zoom label */}
+                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[9px] px-1.5 py-px rounded-full font-mono whitespace-nowrap">
+                      {zm.peakScale}x
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Drag overlay */}
               {isDragOver && (

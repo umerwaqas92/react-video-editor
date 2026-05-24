@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useEditorStore } from '@/store/editorStore'
+import { useEditorStore, createZoomMotion } from '@/store/editorStore'
 import type { Clip } from '@/types'
 import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,7 @@ function getInterval(pps: number): number {
 }
 
 export function Timeline() {
-  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime } = useEditorStore()
+  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, removeZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion } = useEditorStore()
   const dragRef = useRef<{ clipId: string; fromIndex: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const seekRafRef = useRef<number | null>(null)
@@ -189,6 +189,18 @@ export function Timeline() {
         >
           <Scissors className="w-3.5 h-3.5" />
         </Button>
+
+        <div className="w-px h-4 bg-gray-200 mx-1" />
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={() => addZoomMotion(createZoomMotion({ startTime: currentTime }))}
+          title="Add zoom motion"
+        >
+          <ZoomIn className="w-3.5 h-3.5 text-amber-500" />
+        </Button>
       </div>
 
       {/* Clip track + ruler wrapped in single scrollable container */}
@@ -259,6 +271,37 @@ export function Timeline() {
           >
             <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-red-500 -mt-0.5 ml-[-6px]" />
             <div className="w-px bg-red-500 h-full ml-[-0.5px]" />
+          </div>
+        </div>
+
+        {/* Zoom motion track */}
+        <div className="mt-1 border-t border-gray-100" style={{ minWidth: totalWidth + 50 }}>
+          <div className="relative" style={{ minHeight: 20 }}>
+            {zoomMotions.map(motion => {
+              const left = motion.startTime * pixelsPerSecond
+              const width = Math.max(motion.duration * pixelsPerSecond, 40)
+              return (
+                <div
+                  key={motion.id}
+                  className={`absolute top-1 rounded-full cursor-pointer group ${
+                    motion.id === selectedZoomMotionId ? 'ring-2 ring-amber-500 ring-offset-1' : ''
+                  }`}
+                  style={{ left, width, height: 12 }}
+                  onClick={(e) => { e.stopPropagation(); selectZoomMotion(motion.id) }}
+                  title={`Zoom ${motion.peakScale}x — ${motion.duration.toFixed(1)}s`}
+                >
+                  <div className="h-full rounded-full bg-amber-400/60 border border-amber-500/80 flex items-center justify-center text-[8px] text-amber-900 font-mono truncate px-1">
+                    {motion.peakScale}x
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeZoomMotion(motion.id); selectZoomMotion(null) }}
+                    className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[8px] hidden group-hover:flex items-center justify-center cursor-pointer"
+                  >
+                    ×
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>

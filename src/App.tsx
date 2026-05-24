@@ -3,6 +3,7 @@ import { Header } from '@/components/Header'
 import { PhoneMockup } from '@/components/PhoneMockup'
 import { Timeline } from '@/components/Timeline'
 import { TrimEditor } from '@/components/TrimEditor'
+import { ZoomEditor } from '@/components/ZoomEditor'
 import { BackgroundPicker } from '@/components/BackgroundPicker'
 import { usePlayer } from '@/hooks/usePlayer'
 import { useEditorStore } from '@/store/editorStore'
@@ -221,6 +222,7 @@ function App() {
               </button>
             </div>
             <TrimEditor />
+            <ZoomEditor />
           </div>
         </div>
         <Timeline />

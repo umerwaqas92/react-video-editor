@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Clip } from '@/types'
+import type { Clip, ZoomMotion } from '@/types'
 import { deleteMediaAsset } from '@/lib/mediaStorage'
 
 export type Background =
@@ -9,7 +9,9 @@ export type Background =
 
 interface EditorStore {
   clips: Clip[]
+  zoomMotions: ZoomMotion[]
   selectedClipId: string | null
+  selectedZoomMotionId: string | null
   background: Background
   devicePadding: number
   previewZoom: number
@@ -40,11 +42,28 @@ interface EditorStore {
   totalDuration: () => number
   reorderClips: (fromIndex: number, toIndex: number) => void
   splitClipAtTime: (time: number) => boolean
+
+  addZoomMotion: (motion: ZoomMotion) => void
+  removeZoomMotion: (id: string) => void
+  updateZoomMotion: (id: string, updates: Partial<ZoomMotion>) => void
+  selectZoomMotion: (id: string | null) => void
 }
 
 let idCounter = 0
 function generateId(): string {
   return `clip_${Date.now()}_${++idCounter}`
+}
+
+export function createZoomMotion(overrides?: Partial<ZoomMotion>): ZoomMotion {
+  return {
+    id: `zoom_${Date.now()}_${++idCounter}`,
+    startTime: 0,
+    duration: 5,
+    peakScale: 1.5,
+    targetX: 0.5,
+    targetY: 0.5,
+    ...overrides,
+  }
 }
 
 export function createClip(overrides: Partial<Clip> & { type: 'video' | 'image'; src: string; name: string; duration: number }): Clip {
@@ -62,7 +81,9 @@ export function createClip(overrides: Partial<Clip> & { type: 'video' | 'image';
 
 export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   clips: [],
+  zoomMotions: [],
   selectedClipId: null,
+  selectedZoomMotionId: null,
   background: { type: 'color', value: '#000000' },
   devicePadding: 40,
   previewZoom: 1,
@@ -115,12 +136,12 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     if (id) {
       const clip = get().clips.find(c => c.id === id)
       if (clip?.naturalWidth && clip?.naturalHeight) {
-        set({ selectedClipId: id, deviceAspect: `${clip.naturalWidth}/${clip.naturalHeight}` })
+        set({ selectedClipId: id, selectedZoomMotionId: null, deviceAspect: `${clip.naturalWidth}/${clip.naturalHeight}` })
       } else {
-        set({ selectedClipId: id })
+        set({ selectedClipId: id, selectedZoomMotionId: null })
       }
     } else {
-      set({ selectedClipId: null })
+      set({ selectedClipId: null, selectedZoomMotionId: null })
     }
   },
 
@@ -202,12 +223,30 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     set({ clips: newClips, selectedClipId: secondClip.id })
     return true
   },
+
+  addZoomMotion: (motion) => {
+    set(state => ({ zoomMotions: [...state.zoomMotions, motion] }))
+  },
+
+  removeZoomMotion: (id) => {
+    set(state => ({ zoomMotions: state.zoomMotions.filter(m => m.id !== id) }))
+  },
+
+  updateZoomMotion: (id, updates) => {
+    set(state => ({
+      zoomMotions: state.zoomMotions.map(m => m.id === id ? { ...m, ...updates } : m),
+    }))
+  },
+
+  selectZoomMotion: (id) => set({ selectedZoomMotionId: id, selectedClipId: null }),
 }), {
   name: 'react-video-editor-state',
   storage: createJSONStorage(() => localStorage),
   partialize: (state) => ({
     clips: state.clips,
+    zoomMotions: state.zoomMotions,
     selectedClipId: state.selectedClipId,
+    selectedZoomMotionId: state.selectedZoomMotionId,
     background: state.background,
     devicePadding: state.devicePadding,
     previewZoom: state.previewZoom,
