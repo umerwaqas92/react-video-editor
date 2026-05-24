@@ -8,6 +8,8 @@ export interface Clip {
   trimStart: number
   trimEnd: number
   speed: number
+  naturalWidth: number
+  naturalHeight: number
 }
 
 export interface EditorState {

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type { Clip } from '@/types'
 
 export type Background = { type: 'color'; value: string } | { type: 'image'; src: string }
@@ -9,6 +10,9 @@ interface EditorStore {
   background: Background
   devicePadding: number
   previewZoom: number
+  timelineZoom: number
+  isBackgroundPickerOpen: boolean
+  deviceAspect: string
   currentTime: number
   isPlaying: boolean
 
@@ -19,6 +23,9 @@ interface EditorStore {
   setBackground: (bg: Background) => void
   setDevicePadding: (padding: number) => void
   setPreviewZoom: (zoom: number) => void
+  setTimelineZoom: (zoom: number) => void
+  setBackgroundPickerOpen: (open: boolean) => void
+  setDeviceAspect: (aspect: string) => void
   setCurrentTime: (time: number) => void
   setIsPlaying: (playing: boolean) => void
   getClipEndTime: (clip: Clip) => number
@@ -39,16 +46,21 @@ export function createClip(overrides: Partial<Clip> & { type: 'video' | 'image';
     trimStart: 0,
     trimEnd: 0,
     speed: 1,
+    naturalWidth: 1920,
+    naturalHeight: 1080,
     ...overrides,
   }
 }
 
-export const useEditorStore = create<EditorStore>((set, get) => ({
+export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   clips: [],
   selectedClipId: null,
   background: { type: 'color', value: '#000000' },
   devicePadding: 40,
   previewZoom: 1,
+  timelineZoom: 20,
+  isBackgroundPickerOpen: false,
+  deviceAspect: '9/16',
   currentTime: 0,
   isPlaying: false,
 
@@ -85,13 +97,30 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     }))
   },
 
-  selectClip: (id) => set({ selectedClipId: id }),
+  selectClip: (id) => {
+    if (id) {
+      const clip = get().clips.find(c => c.id === id)
+      if (clip?.naturalWidth && clip?.naturalHeight) {
+        set({ selectedClipId: id, deviceAspect: `${clip.naturalWidth}/${clip.naturalHeight}` })
+      } else {
+        set({ selectedClipId: id })
+      }
+    } else {
+      set({ selectedClipId: null })
+    }
+  },
 
   setBackground: (bg) => set({ background: bg }),
 
   setDevicePadding: (padding) => set({ devicePadding: padding }),
 
   setPreviewZoom: (zoom) => set({ previewZoom: zoom }),
+
+  setTimelineZoom: (zoom) => set({ timelineZoom: zoom }),
+
+  setBackgroundPickerOpen: (open) => set({ isBackgroundPickerOpen: open }),
+
+  setDeviceAspect: (aspect) => set({ deviceAspect: aspect }),
 
   setCurrentTime: (time) => set({ currentTime: time }),
 
@@ -124,4 +153,19 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       return { clips: repositioned }
     })
   },
+}), {
+  name: 'react-video-editor-state',
+  storage: createJSONStorage(() => localStorage),
+  partialize: (state) => ({
+    clips: state.clips,
+    selectedClipId: state.selectedClipId,
+    background: state.background,
+    devicePadding: state.devicePadding,
+    previewZoom: state.previewZoom,
+    timelineZoom: state.timelineZoom,
+    isBackgroundPickerOpen: state.isBackgroundPickerOpen,
+    deviceAspect: state.deviceAspect,
+    currentTime: state.currentTime,
+    isPlaying: state.isPlaying,
+  }),
 }))

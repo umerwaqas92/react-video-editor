@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useRef, useCallback } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 import { Button } from '@/components/ui/button'
 import { PaintBucket, X } from 'lucide-react'
@@ -10,9 +10,8 @@ const COLOR_PRESETS = [
 ]
 
 export function BackgroundPicker() {
-  const [isOpen, setIsOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { background, setBackground, devicePadding, setDevicePadding } = useEditorStore()
+  const { background, setBackground, devicePadding, setDevicePadding, isBackgroundPickerOpen, setBackgroundPickerOpen } = useEditorStore()
 
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -22,11 +21,11 @@ export function BackgroundPicker() {
     e.target.value = ''
   }, [setBackground])
 
-  if (!isOpen) {
+  if (!isBackgroundPickerOpen) {
     return (
       <div className="absolute top-3 left-3 z-20">
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={() => setBackgroundPickerOpen(true)}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/95 backdrop-blur border border-gray-200 text-gray-600 hover:text-gray-800 text-xs cursor-pointer shadow-lg"
         >
           <PaintBucket className="w-3.5 h-3.5" />
@@ -43,7 +42,7 @@ export function BackgroundPicker() {
           <PaintBucket className="w-3.5 h-3.5" />
           Background
         </span>
-        <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+        <button onClick={() => setBackgroundPickerOpen(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
           <X className="w-3.5 h-3.5" />
         </button>
       </div>

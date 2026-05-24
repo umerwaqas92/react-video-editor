@@ -16,12 +16,12 @@ function getInterval(pps: number): number {
 }
 
 export function Timeline() {
-  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime } = useEditorStore()
+  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom } = useEditorStore()
   const dragRef = useRef<{ clipId: string; fromIndex: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [zoom, setZoom] = useState(20)
+  const [isScrubbing, setIsScrubbing] = useState(false)
 
-  const pixelsPerSecond = zoom
+  const pixelsPerSecond = timelineZoom
   const duration = totalDuration()
   const totalWidth = Math.max(duration * pixelsPerSecond, 200)
   const playheadX = currentTime * pixelsPerSecond
@@ -46,13 +46,45 @@ export function Timeline() {
     seekAllVideos(state.clips, clamped)
   }, [duration, setCurrentTime])
 
-  const handleTrackClick = useCallback((e: React.MouseEvent) => {
+  const seekFromClientX = useCallback((clientX: number) => {
     const el = scrollRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
-    const x = e.clientX - rect.left + el.scrollLeft
+    const x = clientX - rect.left + el.scrollLeft
     seekTo(x / pixelsPerSecond)
   }, [pixelsPerSecond, seekTo])
+
+  useEffect(() => {
+    if (!isScrubbing) return
+
+    const handleMove = (e: MouseEvent) => {
+      seekFromClientX(e.clientX)
+    }
+
+    const handleUp = () => {
+      setIsScrubbing(false)
+    }
+
+    window.addEventListener('mousemove', handleMove)
+    window.addEventListener('mouseup', handleUp)
+
+    return () => {
+      window.removeEventListener('mousemove', handleMove)
+      window.removeEventListener('mouseup', handleUp)
+    }
+  }, [isScrubbing, seekFromClientX])
+
+  const startScrubbing = useCallback((clientX: number) => {
+    setIsScrubbing(true)
+    seekFromClientX(clientX)
+  }, [seekFromClientX])
+
+  const handleTrackMouseDown = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (target.closest('[data-clip-item="true"]')) return
+    e.preventDefault()
+    startScrubbing(e.clientX)
+  }, [startScrubbing])
 
   // Build time ruler labels
   const rulerLabels: { pos: number; label: string }[] = []
@@ -76,7 +108,7 @@ export function Timeline() {
           variant="ghost"
           size="icon"
           className="h-6 w-6"
-          onClick={() => setZoom(z => Math.max(2, z - 5))}
+          onClick={() => setTimelineZoom(Math.max(2, timelineZoom - 5))}
         >
           <ZoomOut className="w-3.5 h-3.5" />
         </Button>
@@ -84,19 +116,19 @@ export function Timeline() {
           type="range"
           min={2}
           max={200}
-          value={zoom}
-          onChange={e => setZoom(Number(e.target.value))}
+          value={timelineZoom}
+          onChange={e => setTimelineZoom(Number(e.target.value))}
           className="w-20 h-1 accent-gray-600"
         />
         <Button
           variant="ghost"
           size="icon"
           className="h-6 w-6"
-          onClick={() => setZoom(z => Math.min(200, z + 5))}
+          onClick={() => setTimelineZoom(Math.min(200, timelineZoom + 5))}
         >
           <ZoomIn className="w-3.5 h-3.5" />
         </Button>
-        <span className="text-[10px] text-gray-400 font-mono ml-2">{zoom}%</span>
+        <span className="text-[10px] text-gray-400 font-mono ml-2">{timelineZoom}%</span>
 
         <div className="w-px h-4 bg-gray-200 mx-1" />
 
@@ -121,7 +153,12 @@ export function Timeline() {
       </div>
 
       {/* Clip track + ruler wrapped in single scrollable container */}
-      <div ref={scrollRef} className="cursor-pointer" style={{ overflowX: 'auto', overflowY: 'clip' }} onClick={handleTrackClick}>
+      <div
+        ref={scrollRef}
+        className={isScrubbing ? 'cursor-ew-resize select-none' : 'cursor-pointer'}
+        style={{ overflowX: 'auto', overflowY: 'clip' }}
+        onMouseDown={handleTrackMouseDown}
+      >
         {/* Time ruler — at the top */}
         {clips.length > 0 && (
           <div className="mb-1 pb-1 border-b border-gray-200" style={{ height: 24 }}>
@@ -173,8 +210,13 @@ export function Timeline() {
 
           {/* Playhead */}
           <div
-            className="absolute top-0 bottom-0 z-20 pointer-events-none"
+            className="absolute top-0 bottom-0 z-20 cursor-ew-resize"
             style={{ left: playheadX }}
+            onMouseDown={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              startScrubbing(e.clientX)
+            }}
           >
             <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-red-500 -mt-0.5 ml-[-6px]" />
             <div className="w-px bg-red-500 h-full ml-[-0.5px]" />
@@ -208,6 +250,7 @@ function TimelineClipItem({
   return (
     <div
       draggable
+      data-clip-item="true"
       onClick={onSelect}
       onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart() }}
       onDragOver={onDragOver}

@@ -15,11 +15,14 @@ export function Header() {
     const video = document.createElement('video')
     video.src = url
     video.onloadedmetadata = () => {
+      console.log('[AddVideo] metadata:', { n: file.name, d: video.duration, w: video.videoWidth, h: video.videoHeight })
       addClip(createClip({
         type: 'video',
         src: url,
         name: file.name,
         duration: video.duration,
+        naturalWidth: video.videoWidth || 1920,
+        naturalHeight: video.videoHeight || 1080,
       }))
     }
     e.target.value = ''
@@ -32,11 +35,14 @@ export function Header() {
     const img = new Image()
     img.src = url
     img.onload = () => {
+      console.log('[AddImage] loaded:', { n: file.name, w: img.naturalWidth, h: img.naturalHeight })
       addClip(createClip({
         type: 'image',
         src: url,
         name: file.name,
         duration: 5,
+        naturalWidth: img.naturalWidth || 1920,
+        naturalHeight: img.naturalHeight || 1080,
       }))
     }
     e.target.value = ''

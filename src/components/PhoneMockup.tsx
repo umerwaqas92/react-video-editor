@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
-import { drawFrame, preloadAssets, sizeCanvas, seekAllVideos, setOnSeeked } from '@/lib/canvasRenderer'
+import { drawFrame, preloadAssets, sizeCanvas, seekAllVideos, setOnSeeked, getVideoElement } from '@/lib/canvasRenderer'
 import { useEditorStore, createClip } from '@/store/editorStore'
 import { ZoomIn, ZoomOut, Upload } from 'lucide-react'
 
@@ -9,11 +9,58 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
   const containerRef = useRef<HTMLDivElement>(null)
   const sizedRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
-  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, setPreviewZoom, addClip } = useEditorStore()
+  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, setPreviewZoom, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect } = useEditorStore()
 
   useEffect(() => {
     preloadAssets(clips, background)
   }, [clips, background])
+
+  // Adapt device aspect ratio to selected or currently active clip
+  useEffect(() => {
+    const effectiveDuration = (clip: typeof clips[number]) => (clip.duration - clip.trimStart - clip.trimEnd) / clip.speed
+    const selectedClip = selectedClipId ? clips.find(c => c.id === selectedClipId) : undefined
+    const activeClip = clips.find(c => currentTime >= c.startTime && currentTime < c.startTime + effectiveDuration(c))
+    const clip = selectedClip ?? activeClip ?? clips[0]
+
+    if (!clip) {
+      if (deviceAspect !== '9/16') {
+        setDeviceAspect('9/16')
+      }
+      return
+    }
+
+    const applyAspect = (w: number, h: number) => {
+      const aspect = `${w}/${h}`
+      if (aspect !== deviceAspect) {
+        setDeviceAspect(aspect)
+      }
+    }
+
+    if (clip.naturalWidth && clip.naturalHeight) {
+      applyAspect(clip.naturalWidth, clip.naturalHeight)
+      return
+    }
+
+    // Fallback: read from media element
+    if (clip.type === 'video') {
+      const video = getVideoElement(clip.src)
+      if (video.videoWidth && video.videoHeight) {
+        updateClip(clip.id, { naturalWidth: video.videoWidth, naturalHeight: video.videoHeight })
+        applyAspect(video.videoWidth, video.videoHeight)
+      }
+    } else {
+      const img = new Image()
+      img.src = clip.src
+      const done = () => {
+        if (img.naturalWidth && img.naturalHeight) {
+          updateClip(clip.id, { naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight })
+          applyAspect(img.naturalWidth, img.naturalHeight)
+        }
+      }
+      if (img.complete && img.naturalWidth) done()
+      else img.onload = done
+    }
+  }, [selectedClipId, clips, currentTime, deviceAspect, setDeviceAspect, updateClip])
 
   useEffect(() => {
     if (isPlaying) return
@@ -43,6 +90,7 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
     doSize()
     return () => observer.disconnect()
   }, [resolvedRef])
+
 
   useEffect(() => {
     setOnSeeked(() => {
@@ -95,13 +143,15 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
         const video = document.createElement('video')
         video.src = url
         video.onloadedmetadata = () => {
-          addClip(createClip({ type: 'video', src: url, name: file.name, duration: video.duration }))
+          console.log('[DropVideo] metadata:', { n: file.name, d: video.duration, w: video.videoWidth, h: video.videoHeight })
+          addClip(createClip({ type: 'video', src: url, name: file.name, duration: video.duration, naturalWidth: video.videoWidth || 1920, naturalHeight: video.videoHeight || 1080 }))
         }
       } else if (file.type.startsWith('image/')) {
         const img = new Image()
         img.src = url
         img.onload = () => {
-          addClip(createClip({ type: 'image', src: url, name: file.name, duration: 5 }))
+          console.log('[DropImage] loaded:', { n: file.name, w: img.naturalWidth, h: img.naturalHeight })
+          addClip(createClip({ type: 'image', src: url, name: file.name, duration: 5, naturalWidth: img.naturalWidth || 1920, naturalHeight: img.naturalHeight || 1080 }))
         }
       }
     }
@@ -125,7 +175,7 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
             <div
               ref={containerRef}
               className="relative bg-black rounded-[2.5rem] overflow-hidden"
-              style={{ aspectRatio: '9/16' }}
+              style={{ aspectRatio: deviceAspect }}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
