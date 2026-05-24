@@ -19,6 +19,8 @@ export function Timeline() {
   const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime } = useEditorStore()
   const dragRef = useRef<{ clipId: string; fromIndex: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const seekRafRef = useRef<number | null>(null)
+  const pendingSeekRef = useRef<number | null>(null)
   const [isScrubbing, setIsScrubbing] = useState(false)
 
   const pixelsPerSecond = timelineZoom
@@ -44,12 +46,23 @@ export function Timeline() {
     }
   }, [playheadX])
 
-  const seekTo = useCallback((time: number) => {
+  const seekToImmediate = useCallback((time: number) => {
     const clamped = Math.max(0, Math.min(time, duration))
     setCurrentTime(clamped)
     const state = useEditorStore.getState()
-    seekAllVideos(state.clips, clamped)
+    seekAllVideos(state.clips, clamped, state.playbackRate)
   }, [duration, setCurrentTime])
+
+  const seekTo = useCallback((time: number) => {
+    pendingSeekRef.current = time
+    if (seekRafRef.current !== null) return
+    seekRafRef.current = requestAnimationFrame(() => {
+      seekRafRef.current = null
+      if (pendingSeekRef.current === null) return
+      seekToImmediate(pendingSeekRef.current)
+      pendingSeekRef.current = null
+    })
+  }, [seekToImmediate])
 
   const seekFromClientX = useCallback((clientX: number) => {
     const el = scrollRef.current
@@ -78,6 +91,14 @@ export function Timeline() {
       window.removeEventListener('mouseup', handleUp)
     }
   }, [isScrubbing, seekFromClientX])
+
+  useEffect(() => {
+    return () => {
+      if (seekRafRef.current !== null) {
+        cancelAnimationFrame(seekRafRef.current)
+      }
+    }
+  }, [])
 
   const startScrubbing = useCallback((clientX: number) => {
     setIsScrubbing(true)
@@ -161,7 +182,7 @@ export function Timeline() {
           className="h-6 w-6"
           onClick={() => {
             const didSplit = splitClipAtTime(currentTime)
-            if (didSplit) seekTo(currentTime)
+            if (didSplit) seekToImmediate(currentTime)
           }}
           title="Split at playhead"
           disabled={!canSplitAtCurrentTime}

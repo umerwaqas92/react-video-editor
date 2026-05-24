@@ -7,7 +7,7 @@ import { saveMediaAsset } from '@/lib/mediaStorage'
 export function Header() {
   const videoInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
-  const { addClip, isPlaying, setIsPlaying, setCurrentTime, totalDuration, currentTime } = useEditorStore()
+  const { addClip, isPlaying, setIsPlaying, setCurrentTime, totalDuration, currentTime, playbackRate, setPlaybackRate } = useEditorStore()
 
   const handleVideoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -98,6 +98,20 @@ export function Header() {
         <Button variant="outline" size="icon" onClick={togglePlay}>
           {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
         </Button>
+
+        <div className="flex items-center gap-1">
+          {[1, 2, 3].map(rate => (
+            <button
+              key={rate}
+              onClick={() => setPlaybackRate(rate)}
+              className={`px-1.5 py-0.5 text-[10px] rounded font-mono cursor-pointer transition-colors ${
+                playbackRate === rate ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {rate}x
+            </button>
+          ))}
+        </div>
 
         <span className="text-xs text-gray-500 font-mono min-w-[80px] text-right">
           {formatTime(currentTime)} / {formatTime(totalDuration())}

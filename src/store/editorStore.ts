@@ -17,6 +17,7 @@ interface EditorStore {
   isBackgroundPickerOpen: boolean
   stageAspect: string
   deviceAspect: string
+  playbackRate: number
   currentTime: number
   isPlaying: boolean
 
@@ -31,6 +32,7 @@ interface EditorStore {
   setBackgroundPickerOpen: (open: boolean) => void
   setStageAspect: (aspect: string) => void
   setDeviceAspect: (aspect: string) => void
+  setPlaybackRate: (rate: number) => void
   setCurrentTime: (time: number) => void
   setIsPlaying: (playing: boolean) => void
   getClipEndTime: (clip: Clip) => number
@@ -68,6 +70,7 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   isBackgroundPickerOpen: false,
   stageAspect: '16/9',
   deviceAspect: '9/16',
+  playbackRate: 1,
   currentTime: 0,
   isPlaying: false,
 
@@ -134,6 +137,8 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   setStageAspect: (aspect) => set({ stageAspect: aspect }),
 
   setDeviceAspect: (aspect) => set({ deviceAspect: aspect }),
+
+  setPlaybackRate: (rate) => set({ playbackRate: Math.max(0.25, Math.min(4, rate)) }),
 
   setCurrentTime: (time) => set({ currentTime: time }),
 
@@ -210,6 +215,7 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     isBackgroundPickerOpen: state.isBackgroundPickerOpen,
     stageAspect: state.stageAspect,
     deviceAspect: state.deviceAspect,
+    playbackRate: state.playbackRate,
     currentTime: state.currentTime,
     isPlaying: state.isPlaying,
   }),

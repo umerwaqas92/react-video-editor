@@ -77,7 +77,7 @@ function findClipAtTime(clips: Clip[], time: number): Clip | null {
   return null
 }
 
-export function syncPlayback(clips: Clip[], time: number) {
+export function syncPlayback(clips: Clip[], time: number, playbackRate = 1) {
   const clip = findClipAtTime(clips, time)
   if (!clip || clip.type !== 'video') {
     // No active video clip — pause any playing video
@@ -105,7 +105,7 @@ export function syncPlayback(clips: Clip[], time: number) {
   const video = getVideoElement(clip.src)
   const sourceTime = clip.trimStart + (time - clip.startTime) * clip.speed
   video.currentTime = Math.min(sourceTime, clip.duration - clip.trimEnd - 0.05)
-  video.playbackRate = clip.speed
+  video.playbackRate = Math.max(0.25, Math.min(16, clip.speed * playbackRate))
   video.play().catch(() => {})
   activeVideo = video
   activeClipId = clip.id
@@ -123,18 +123,20 @@ export function stopAllVideos() {
   }
 }
 
-export function seekAllVideos(clips: Clip[], time: number) {
+export function seekAllVideos(clips: Clip[], time: number, playbackRate = 1) {
   const clip = findClipAtTime(clips, time)
   if (clip && clip.type === 'video') {
     const video = getVideoElement(clip.src)
     const sourceTime = clip.trimStart + (time - clip.startTime) * clip.speed
     const targetTime = Math.min(sourceTime, clip.duration - clip.trimEnd - 0.05)
-    video.playbackRate = clip.speed
+    video.playbackRate = Math.max(0.25, Math.min(16, clip.speed * playbackRate))
     activeVideo = video
     activeClipId = clip.id
 
     const needsSeek = Math.abs(video.currentTime - targetTime) > 0.02
     if (needsSeek) {
+      // Draw immediately with the currently available frame to avoid blank flashes during fast scrubbing.
+      onSeeked?.()
       video.currentTime = targetTime
       const onSeekDone = () => {
         video.removeEventListener('seeked', onSeekDone)

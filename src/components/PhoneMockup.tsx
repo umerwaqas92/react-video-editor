@@ -68,7 +68,7 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
   useEffect(() => {
     if (isPlaying) return
     const s = useEditorStore.getState()
-    seekAllVideos(s.clips, s.currentTime)
+    seekAllVideos(s.clips, s.currentTime, s.playbackRate)
   }, [clips, isPlaying])
 
   useEffect(() => {
@@ -82,7 +82,7 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
       if (wasUnsized && canvas.width > 0) {
         const s = useEditorStore.getState()
         if (!s.isPlaying) {
-          seekAllVideos(s.clips, s.currentTime)
+          seekAllVideos(s.clips, s.currentTime, s.playbackRate)
           drawFrame(canvas, s.clips, s.background, s.currentTime)
         }
       }

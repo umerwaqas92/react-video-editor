@@ -6,18 +6,19 @@ export function usePlayer(canvasRef: React.RefObject<HTMLCanvasElement | null>) 
   const rafRef = useRef<number>(0)
   const lastTimeRef = useRef<number>(0)
   const isPlaying = useEditorStore(s => s.isPlaying)
+  const playbackRate = useEditorStore(s => s.playbackRate)
 
-  const animate = useCallback((timestamp: number) => {
+  const animate = useCallback(function animateFrame(timestamp: number) {
     if (!useEditorStore.getState().isPlaying) return
 
     if (lastTimeRef.current === 0) lastTimeRef.current = timestamp
-    const delta = (timestamp - lastTimeRef.current) / 1000
+    const delta = ((timestamp - lastTimeRef.current) / 1000) * playbackRate
     lastTimeRef.current = timestamp
 
     const state = useEditorStore.getState()
     const canvas = canvasRef.current
     if (!canvas || canvas.width === 0) {
-      rafRef.current = requestAnimationFrame(animate)
+      rafRef.current = requestAnimationFrame(animateFrame)
       return
     }
 
@@ -33,17 +34,17 @@ export function usePlayer(canvasRef: React.RefObject<HTMLCanvasElement | null>) 
     }
 
     state.setCurrentTime(Math.min(newTime, duration))
-    syncPlayback(state.clips, state.currentTime)
+    syncPlayback(state.clips, state.currentTime, state.playbackRate)
     drawFrame(canvas, state.clips, state.background, state.currentTime)
 
-    rafRef.current = requestAnimationFrame(animate)
-  }, [canvasRef])
+    rafRef.current = requestAnimationFrame(animateFrame)
+  }, [canvasRef, playbackRate])
 
   useEffect(() => {
     if (isPlaying) {
       lastTimeRef.current = 0
       const state = useEditorStore.getState()
-      seekAllVideos(state.clips, state.currentTime)
+      seekAllVideos(state.clips, state.currentTime, state.playbackRate)
       rafRef.current = requestAnimationFrame(animate)
     } else {
       stopAllVideos()
@@ -69,9 +70,7 @@ export function usePlayer(canvasRef: React.RefObject<HTMLCanvasElement | null>) 
     const state = useEditorStore.getState()
     const clamped = Math.max(0, Math.min(time, state.totalDuration()))
     state.setCurrentTime(clamped)
-    if (state.isPlaying) {
-      seekAllVideos(state.clips, clamped)
-    }
+    seekAllVideos(state.clips, clamped, state.playbackRate)
   }, [])
 
   return { togglePlay, seek }
