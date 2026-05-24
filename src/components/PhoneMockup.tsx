@@ -282,8 +282,8 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
                 </div>
               )}
 
-              {/* Zoom motion indicator */}
-              {motionZoom > 1.01 && (
+              {/* Zoom motion indicator — only when selected AND active */}
+              {selectedZoomMotionId && motionZoom > 1.01 && (
                 <div className="absolute inset-0 pointer-events-none z-10">
                   <div className="absolute top-2 left-2 w-3 h-3 border-t-2 border-l-2 border-amber-400 rounded-tl" />
                   <div className="absolute top-2 right-2 w-3 h-3 border-t-2 border-r-2 border-amber-400 rounded-tr" />
