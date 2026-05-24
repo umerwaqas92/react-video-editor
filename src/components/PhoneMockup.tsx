@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { drawFrame, preloadAssets, sizeCanvas, seekAllVideos, setOnSeeked, getVideoElement } from '@/lib/canvasRenderer'
 import { useEditorStore, createClip } from '@/store/editorStore'
-import { ZoomIn, ZoomOut, Upload } from 'lucide-react'
+import { Upload } from 'lucide-react'
 import { saveMediaAsset } from '@/lib/mediaStorage'
 
 export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
@@ -10,7 +10,7 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
   const containerRef = useRef<HTMLDivElement>(null)
   const sizedRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
-  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, setPreviewZoom, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect } = useEditorStore()
+  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect } = useEditorStore()
 
   useEffect(() => {
     preloadAssets(clips, background)
@@ -215,25 +215,6 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
         </div>
       </div>
 
-      <div className="absolute bottom-3 right-3 z-20 flex items-center gap-0.5 bg-white/90 backdrop-blur border border-gray-200 rounded-lg shadow-lg">
-        <button
-          onClick={() => setPreviewZoom(Math.max(0.25, previewZoom - 0.1))}
-          className="p-1.5 text-gray-400 hover:text-gray-700 cursor-pointer"
-          title="Zoom out preview"
-        >
-          <ZoomOut className="w-3.5 h-3.5" />
-        </button>
-        <span className="text-[10px] text-gray-500 font-mono min-w-[36px] text-center select-none">
-          {Math.round(previewZoom * 100)}%
-        </span>
-        <button
-          onClick={() => setPreviewZoom(Math.min(2, previewZoom + 0.1))}
-          className="p-1.5 text-gray-400 hover:text-gray-700 cursor-pointer"
-          title="Zoom in preview"
-        >
-          <ZoomIn className="w-3.5 h-3.5" />
-        </button>
-      </div>
     </div>
   )
 }

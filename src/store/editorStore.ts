@@ -15,6 +15,7 @@ interface EditorStore {
   previewZoom: number
   timelineZoom: number
   isBackgroundPickerOpen: boolean
+  stageAspect: string
   deviceAspect: string
   currentTime: number
   isPlaying: boolean
@@ -28,6 +29,7 @@ interface EditorStore {
   setPreviewZoom: (zoom: number) => void
   setTimelineZoom: (zoom: number) => void
   setBackgroundPickerOpen: (open: boolean) => void
+  setStageAspect: (aspect: string) => void
   setDeviceAspect: (aspect: string) => void
   setCurrentTime: (time: number) => void
   setIsPlaying: (playing: boolean) => void
@@ -63,6 +65,7 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   previewZoom: 1,
   timelineZoom: 20,
   isBackgroundPickerOpen: false,
+  stageAspect: '16/9',
   deviceAspect: '9/16',
   currentTime: 0,
   isPlaying: false,
@@ -127,6 +130,8 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
 
   setBackgroundPickerOpen: (open) => set({ isBackgroundPickerOpen: open }),
 
+  setStageAspect: (aspect) => set({ stageAspect: aspect }),
+
   setDeviceAspect: (aspect) => set({ deviceAspect: aspect }),
 
   setCurrentTime: (time) => set({ currentTime: time }),
@@ -171,6 +176,7 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     previewZoom: state.previewZoom,
     timelineZoom: state.timelineZoom,
     isBackgroundPickerOpen: state.isBackgroundPickerOpen,
+    stageAspect: state.stageAspect,
     deviceAspect: state.deviceAspect,
     currentTime: state.currentTime,
     isPlaying: state.isPlaying,

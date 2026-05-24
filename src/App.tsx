@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Header } from '@/components/Header'
 import { PhoneMockup } from '@/components/PhoneMockup'
 import { Timeline } from '@/components/Timeline'
@@ -7,12 +7,21 @@ import { BackgroundPicker } from '@/components/BackgroundPicker'
 import { usePlayer } from '@/hooks/usePlayer'
 import { useEditorStore } from '@/store/editorStore'
 import { loadMediaAssetUrl } from '@/lib/mediaStorage'
+import { ZoomIn, ZoomOut } from 'lucide-react'
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const stageHostRef = useRef<HTMLDivElement>(null)
   const restoredMediaRef = useRef(false)
-  const { currentTime, setCurrentTime, totalDuration, background } = useEditorStore()
+  const { currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect } = useEditorStore()
+  const [stageSize, setStageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
   const { togglePlay, seek } = usePlayer(canvasRef)
+
+  const stageRatio = useMemo(() => {
+    const [w, h] = stageAspect.split('/').map(Number)
+    if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return 16 / 9
+    return w / h
+  }, [stageAspect])
 
   useEffect(() => {
     if (restoredMediaRef.current) return
@@ -85,6 +94,32 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [togglePlay, seek, currentTime, totalDuration, setCurrentTime])
 
+  useEffect(() => {
+    const host = stageHostRef.current
+    if (!host) return
+
+    const updateStageSize = () => {
+      const rect = host.getBoundingClientRect()
+      const availableWidth = Math.max(0, rect.width)
+      const availableHeight = Math.max(0, rect.height)
+      if (availableWidth === 0 || availableHeight === 0) return
+
+      let width = availableWidth
+      let height = width / stageRatio
+      if (height > availableHeight) {
+        height = availableHeight
+        width = height * stageRatio
+      }
+
+      setStageSize({ width, height })
+    }
+
+    const observer = new ResizeObserver(updateStageSize)
+    observer.observe(host)
+    updateStageSize()
+    return () => observer.disconnect()
+  }, [stageRatio])
+
   const bgStyle = background.type === 'color'
     ? { backgroundColor: background.value }
     : { backgroundImage: `url(${background.src})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
@@ -93,12 +128,49 @@ function App() {
     <div className="flex flex-col h-screen bg-gray-100">
       <Header />
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-        {/* Preview area — shows background behind device */}
-        <div className="flex-1 relative overflow-hidden" style={bgStyle}>
-          {/* Checkerboard when background is transparent/white */}
-          <PhoneMockup canvasRef={canvasRef} />
-          <TrimEditor />
-          <BackgroundPicker />
+        <div className="flex-1 flex overflow-hidden gap-3 p-3">
+          <div className="w-56 shrink-0">
+            <BackgroundPicker />
+          </div>
+          <div className="flex-1 relative overflow-hidden rounded-xl border border-gray-200 bg-gray-200/60">
+            <div ref={stageHostRef} className="absolute inset-0 flex items-center justify-center p-3">
+              <div
+                className="relative overflow-hidden rounded-xl border border-gray-300 shadow-lg"
+                style={{
+                  width: `${stageSize.width}px`,
+                  height: `${stageSize.height}px`,
+                  transform: `scale(${previewZoom})`,
+                  transformOrigin: 'center center',
+                  transition: 'transform 0.15s ease',
+                  ...bgStyle,
+                }}
+              >
+                <PhoneMockup canvasRef={canvasRef} />
+              </div>
+            </div>
+          </div>
+          <div className="w-64 shrink-0 flex flex-col gap-2">
+            <div className="bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-1.5 flex items-center justify-center gap-0.5">
+              <button
+                onClick={() => setPreviewZoom(Math.max(0.25, previewZoom - 0.1))}
+                className="p-1.5 text-gray-400 hover:text-gray-700 cursor-pointer"
+                title="Zoom out preview"
+              >
+                <ZoomOut className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-[10px] text-gray-500 font-mono min-w-[36px] text-center select-none">
+                {Math.round(previewZoom * 100)}%
+              </span>
+              <button
+                onClick={() => setPreviewZoom(Math.min(2, previewZoom + 0.1))}
+                className="p-1.5 text-gray-400 hover:text-gray-700 cursor-pointer"
+                title="Zoom in preview"
+              >
+                <ZoomIn className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <TrimEditor />
+          </div>
         </div>
         <Timeline />
       </div>

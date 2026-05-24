@@ -9,10 +9,20 @@ const COLOR_PRESETS = [
   '#533483', '#e94560', '#f5f5f5', '#333333', '#ff6b6b',
   '#51cf66', '#339af0', '#fcc419', '#845ef7',
 ]
+const STAGE_ASPECT_PRESETS = ['16/9', '9/16', '1/1', '4/5', '21/9']
 
 export function BackgroundPicker() {
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { background, setBackground, devicePadding, setDevicePadding, isBackgroundPickerOpen, setBackgroundPickerOpen } = useEditorStore()
+  const {
+    background,
+    setBackground,
+    devicePadding,
+    setDevicePadding,
+    isBackgroundPickerOpen,
+    setBackgroundPickerOpen,
+    stageAspect,
+    setStageAspect,
+  } = useEditorStore()
 
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -33,7 +43,7 @@ export function BackgroundPicker() {
 
   if (!isBackgroundPickerOpen) {
     return (
-      <div className="absolute top-3 left-3 z-20">
+      <div>
         <button
           onClick={() => setBackgroundPickerOpen(true)}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/95 backdrop-blur border border-gray-200 text-gray-600 hover:text-gray-800 text-xs cursor-pointer shadow-lg"
@@ -46,7 +56,7 @@ export function BackgroundPicker() {
   }
 
   return (
-    <div className="absolute top-3 left-3 z-20 w-56 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3 space-y-2.5">
+    <div className="w-56 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3 space-y-2.5">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-gray-800 flex items-center gap-1.5">
           <PaintBucket className="w-3.5 h-3.5" />
@@ -127,6 +137,25 @@ export function BackgroundPicker() {
           onChange={e => setDevicePadding(Number(e.target.value))}
           className="w-full h-1 accent-gray-600"
         />
+      </div>
+
+      <div>
+        <p className="text-[10px] text-gray-400 mb-1">Player Ratio</p>
+        <div className="flex gap-1 flex-wrap">
+          {STAGE_ASPECT_PRESETS.map((ratio) => (
+            <button
+              key={ratio}
+              onClick={() => setStageAspect(ratio)}
+              className={`px-1.5 py-0.5 text-[10px] rounded font-mono cursor-pointer transition-colors ${
+                stageAspect === ratio
+                  ? 'bg-gray-800 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {ratio}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
