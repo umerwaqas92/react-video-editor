@@ -7,9 +7,11 @@ import { saveMediaAsset } from '@/lib/mediaStorage'
 export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
   const innerRef = useRef<HTMLCanvasElement>(null)
   const resolvedRef = canvasRef || innerRef
+  const previewAreaRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const sizedRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [phoneWidth, setPhoneWidth] = useState(260)
   const { clips, background, currentTime, isPlaying, devicePadding, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect } = useEditorStore()
 
   useEffect(() => {
@@ -112,6 +114,40 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
     drawFrame(canvas, clips, background, currentTime)
   }, [clips, background, currentTime, isPlaying, resolvedRef])
 
+  useEffect(() => {
+    const host = previewAreaRef.current
+    if (!host) return
+
+    const parseAspect = (value: string) => {
+      const [w, h] = value.split('/').map(Number)
+      if (!Number.isFinite(w) || !Number.isFinite(h) || h <= 0) return 9 / 16
+      return w / h
+    }
+
+    const updatePhoneSize = () => {
+      const rect = host.getBoundingClientRect()
+      const availableWidth = Math.max(0, rect.width)
+      const availableHeight = Math.max(0, rect.height)
+      if (availableWidth === 0 || availableHeight === 0) return
+
+      const ratio = parseAspect(deviceAspect)
+      let width = Math.min(340, availableWidth)
+      let height = width / ratio
+      if (height > availableHeight) {
+        height = availableHeight
+        width = height * ratio
+      }
+
+      setPhoneWidth(Math.max(140, width))
+    }
+
+    const observer = new ResizeObserver(updatePhoneSize)
+    observer.observe(host)
+    updatePhoneSize()
+    requestAnimationFrame(updatePhoneSize)
+    return () => observer.disconnect()
+  }, [deviceAspect])
+
   // Drag and drop handlers
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -163,9 +199,13 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
   }, [addClip])
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center overflow-hidden" style={{ padding: `${devicePadding}px` }}>
+    <div
+      ref={previewAreaRef}
+      className="relative w-full h-full flex items-center justify-center overflow-hidden"
+      style={{ padding: `${devicePadding}px` }}
+    >
       <div className="flex items-center justify-center w-full h-full">
-        <div className="relative w-full max-w-[340px]">
+        <div className="relative" style={{ width: `${phoneWidth}px` }}>
           <div className={`relative bg-neutral-900 rounded-[3rem] p-2.5 border-[3px] shadow-2xl transition-colors ${
             isDragOver ? 'border-blue-400 shadow-blue-500/20' : 'border-neutral-700'
           }`}>
