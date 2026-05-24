@@ -199,18 +199,23 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
   }, [addClip])
 
   // Compute zoom from active zoom motions
+  // Snappy curve: fast zoom-in (0→30%), hold at peak (30→70%), fast zoom-out (70→100%)
   let motionZoom = 1
   let zoomOriginX = 0.5
   let zoomOriginY = 0.5
   for (const m of zoomMotions) {
     const progress = (currentTime - m.startTime) / m.duration
     if (progress >= 0 && progress <= 1) {
-      const p = progress <= 0.5
-        ? (m.peakScale - 1) * (progress / 0.5)
-        : (m.peakScale - 1) * ((1 - progress) / 0.5)
+      let p: number
+      if (progress <= 0.3) {
+        p = (m.peakScale - 1) * (progress / 0.3)
+      } else if (progress <= 0.7) {
+        p = m.peakScale - 1
+      } else {
+        p = (m.peakScale - 1) * ((1 - progress) / 0.3)
+      }
       const scale = 1 + p
       motionZoom *= scale
-      // Weighted average of zoom origins (last active motion takes priority)
       if (scale > 1.01) {
         zoomOriginX = m.targetX
         zoomOriginY = m.targetY
