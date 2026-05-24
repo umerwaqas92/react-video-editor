@@ -10,7 +10,7 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
   const containerRef = useRef<HTMLDivElement>(null)
   const sizedRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
-  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect } = useEditorStore()
+  const { clips, background, currentTime, isPlaying, devicePadding, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect } = useEditorStore()
 
   useEffect(() => {
     preloadAssets(clips, background)
@@ -164,14 +164,7 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
 
   return (
     <div className="relative w-full h-full flex items-center justify-center overflow-hidden" style={{ padding: `${devicePadding}px` }}>
-      <div
-        className="flex items-center justify-center"
-        style={{
-          transform: `scale(${previewZoom})`,
-          transformOrigin: 'center center',
-          transition: 'transform 0.15s ease',
-        }}
-      >
+      <div className="flex items-center justify-center">
         <div className="relative" style={{ width: 340 }}>
           <div className={`relative bg-neutral-900 rounded-[3rem] p-2.5 border-[3px] shadow-2xl transition-colors ${
             isDragOver ? 'border-blue-400 shadow-blue-500/20' : 'border-neutral-700'
