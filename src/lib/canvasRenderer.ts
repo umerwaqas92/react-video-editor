@@ -9,6 +9,19 @@ export function setOnSeeked(cb: (() => void) | null) {
   onSeeked = cb
 }
 
+export function clearMediaCache() {
+  for (const [, video] of videoCache) {
+    video.pause()
+    video.removeAttribute('src')
+    video.load()
+  }
+  videoCache.clear()
+  for (const [src] of imageCache) {
+    if (src.startsWith('blob:')) URL.revokeObjectURL(src)
+  }
+  imageCache.clear()
+}
+
 export function getVideoElement(src: string): HTMLVideoElement {
   if (!videoCache.has(src)) {
     const video = document.createElement('video')

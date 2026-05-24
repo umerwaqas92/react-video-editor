@@ -8,6 +8,7 @@ import { BackgroundPicker } from '@/components/BackgroundPicker'
 import { usePlayer } from '@/hooks/usePlayer'
 import { useEditorStore } from '@/store/editorStore'
 import { loadMediaAssetUrl } from '@/lib/mediaStorage'
+import { clearMediaCache } from '@/lib/canvasRenderer'
 import { ZoomIn, ZoomOut } from 'lucide-react'
 
 function App() {
@@ -32,24 +33,27 @@ function App() {
     const restoreMedia = async () => {
       const state = useEditorStore.getState()
 
-      await Promise.all(state.clips.map(async (clip) => {
-        if (!clip.mediaStorageKey) return
+      // Clear stale cached media from previous session
+      clearMediaCache()
+
+      // Restore clip sources from IndexedDB
+      const restoredClips = await Promise.all(state.clips.map(async (clip) => {
+        if (!clip.mediaStorageKey) return clip
         const restoredUrl = await loadMediaAssetUrl(clip.mediaStorageKey)
-        if (restoredUrl) {
-          useEditorStore.getState().updateClip(clip.id, { src: restoredUrl })
-        }
+        return restoredUrl ? { ...clip, src: restoredUrl } : clip
       }))
 
-      const freshState = useEditorStore.getState()
-      if (freshState.background.type === 'image' && freshState.background.mediaStorageKey) {
-        const restoredBgUrl = await loadMediaAssetUrl(freshState.background.mediaStorageKey)
+      // Restore background image
+      let restoredBg = state.background
+      if (state.background.type === 'image' && state.background.mediaStorageKey) {
+        const restoredBgUrl = await loadMediaAssetUrl(state.background.mediaStorageKey)
         if (restoredBgUrl) {
-          useEditorStore.getState().setBackground({
-            ...freshState.background,
-            src: restoredBgUrl,
-          })
+          restoredBg = { ...state.background, src: restoredBgUrl }
         }
       }
+
+      // Apply all at once — bypasses undo snapshots
+      useEditorStore.setState({ clips: restoredClips, background: restoredBg })
     }
 
     void restoreMedia()
