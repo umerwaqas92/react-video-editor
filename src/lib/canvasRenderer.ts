@@ -15,6 +15,10 @@ export function getVideoElement(src: string): HTMLVideoElement {
     video.src = src
     video.muted = true
     video.preload = 'auto'
+    // Trigger redraw when video data is ready
+    video.addEventListener('canplay', () => {
+      onSeeked?.()
+    }, { once: true })
     videoCache.set(src, video)
   }
   return videoCache.get(src)!
@@ -128,15 +132,18 @@ export function seekAllVideos(clips: Clip[], time: number) {
     video.playbackRate = clip.speed
     activeVideo = video
     activeClipId = clip.id
-    // Only seek if difference is significant
-    if (Math.abs(video.currentTime - targetTime) > 0.02) {
+
+    const needsSeek = Math.abs(video.currentTime - targetTime) > 0.02
+    if (needsSeek) {
       video.currentTime = targetTime
-      // Fire redraw when seek completes and frame is ready
       const onSeekDone = () => {
         video.removeEventListener('seeked', onSeekDone)
         onSeeked?.()
       }
       video.addEventListener('seeked', onSeekDone, { once: true })
+    } else {
+      // Already at the right frame — redraw immediately
+      onSeeked?.()
     }
   } else {
     activeVideo = null
