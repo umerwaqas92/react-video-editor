@@ -388,13 +388,6 @@ export function Timeline() {
                       document.addEventListener('mouseup', onUp)
                     }}
                   />
-                  {/* Delete button */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); removeZoomMotion(motion.id); selectZoomMotion(null) }}
-                    className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[8px] hidden group-hover:flex items-center justify-center cursor-pointer z-10"
-                  >
-                    ×
-                  </button>
                 </div>
               )
             })}

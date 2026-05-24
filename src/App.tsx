@@ -70,7 +70,9 @@ function App() {
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const state = useEditorStore.getState()
-        if (state.selectedClipId) {
+        if (state.selectedZoomMotionId) {
+          state.removeZoomMotion(state.selectedZoomMotionId)
+        } else if (state.selectedClipId) {
           state.removeClip(state.selectedClipId)
         }
       }
