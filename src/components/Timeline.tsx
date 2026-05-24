@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEditorStore, createZoomMotion } from '@/store/editorStore'
 import type { Clip } from '@/types'
-import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors } from 'lucide-react'
+import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors, Play, Pause } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { seekAllVideos } from '@/lib/canvasRenderer'
 
@@ -16,7 +16,7 @@ function getInterval(pps: number): number {
 }
 
 export function Timeline() {
-  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, removeZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion } = useEditorStore()
+  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, removeZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion, isPlaying, setIsPlaying, playbackRate, setPlaybackRate } = useEditorStore()
   const dragRef = useRef<{ clipId: string; fromIndex: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const seekRafRef = useRef<number | null>(null)
@@ -201,6 +201,31 @@ export function Timeline() {
         >
           <ZoomIn className="w-3.5 h-3.5 text-amber-500" />
         </Button>
+
+        <div className="w-px h-4 bg-gray-200 mx-1" />
+
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-6 w-6"
+          onClick={() => {
+            const state = useEditorStore.getState()
+            if (state.totalDuration() === 0) return
+            if (state.isPlaying) {
+              state.setIsPlaying(false)
+            } else {
+              if (state.currentTime >= state.totalDuration()) state.setCurrentTime(0)
+              state.setIsPlaying(true)
+            }
+          }}
+          title="Play / Pause"
+        >
+          {isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+        </Button>
+
+        <span className="text-[10px] text-gray-500 font-mono select-none tabular-nums">
+          {formatTime(currentTime)} / {formatTime(totalDuration())}
+        </span>
       </div>
 
       {/* Clip track + ruler wrapped in single scrollable container */}
@@ -428,4 +453,10 @@ function TimelineClipItem({
       )}
     </div>
   )
+}
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return `${m}:${s.toString().padStart(2, '0')}`
 }

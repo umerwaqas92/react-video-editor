@@ -1,13 +1,13 @@
 import { useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { useEditorStore, createClip } from '@/store/editorStore'
-import { Play, Pause, Plus, ImageIcon } from 'lucide-react'
+import { Plus, ImageIcon } from 'lucide-react'
 import { saveMediaAsset } from '@/lib/mediaStorage'
 
 export function Header() {
   const videoInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
-  const { addClip, isPlaying, setIsPlaying, setCurrentTime, totalDuration, currentTime, playbackRate, setPlaybackRate } = useEditorStore()
+  const { addClip, playbackRate, setPlaybackRate } = useEditorStore()
 
   const handleVideoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -61,19 +61,6 @@ export function Header() {
     e.target.value = ''
   }, [addClip])
 
-  const togglePlay = useCallback(() => {
-    const state = useEditorStore.getState()
-    if (state.totalDuration() === 0) return
-    if (state.isPlaying) {
-      setIsPlaying(false)
-    } else {
-      if (state.currentTime >= state.totalDuration()) {
-        setCurrentTime(0)
-      }
-      setIsPlaying(true)
-    }
-  }, [setIsPlaying, setCurrentTime])
-
   return (
     <header className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200">
       <div className="flex items-center gap-2">
@@ -95,10 +82,6 @@ export function Header() {
 
         <div className="w-px h-6 bg-gray-200 mx-1" />
 
-        <Button variant="outline" size="icon" onClick={togglePlay}>
-          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-        </Button>
-
         <div className="flex items-center gap-1">
           {[1, 2, 3].map(rate => (
             <button
@@ -113,17 +96,7 @@ export function Header() {
           ))}
         </div>
 
-        <span className="text-xs text-gray-500 font-mono min-w-[80px] text-right">
-          {formatTime(currentTime)} / {formatTime(totalDuration())}
-        </span>
       </div>
     </header>
   )
-}
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  const ms = Math.floor((seconds % 1) * 100)
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`
 }
