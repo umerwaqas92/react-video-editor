@@ -15,9 +15,28 @@ export function ZoomEditor() {
   }, [motion, removeZoomMotion, selectZoomMotion])
 
   if (!motion) {
+    if (zoomMotions.length === 0) return null
     return (
-      <div className="w-full md:w-64 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3">
-        <p className="text-xs text-gray-500">Select a zoom motion to edit.</p>
+      <div className="w-full md:w-64 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3 space-y-2">
+        <span className="text-xs font-medium text-gray-800">Zoom Motions</span>
+        {zoomMotions.map(m => (
+          <div key={m.id} className="flex items-center justify-between bg-gray-50 rounded-md px-2 py-1.5">
+            <button
+              onClick={() => selectZoomMotion(m.id)}
+              className="text-xs text-gray-700 font-mono cursor-pointer hover:text-gray-900"
+            >
+              {m.peakScale}x · {m.duration.toFixed(1)}s · at {m.startTime.toFixed(1)}s
+            </button>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="h-6 px-2 text-[10px]"
+              onClick={() => removeZoomMotion(m.id)}
+            >
+              <Trash2 className="w-3 h-3" />
+            </Button>
+          </div>
+        ))}
       </div>
     )
   }
@@ -25,11 +44,8 @@ export function ZoomEditor() {
   return (
     <div className="w-full md:w-64 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3 space-y-2.5">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-xs font-medium text-gray-800 truncate">Zoom Motion</span>
-          <span className="text-[10px] text-gray-400 font-mono flex-shrink-0">{motion.peakScale.toFixed(1)}x</span>
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <span className="text-xs font-medium text-gray-800">Zoom Motion</span>
+        <div className="flex items-center gap-1">
           <Button variant="destructive" size="sm" className="h-6 px-2 text-[10px]" onClick={handleDelete}>
             <Trash2 className="w-3 h-3" />
           </Button>
