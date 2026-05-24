@@ -10,24 +10,16 @@ import { useExporter } from '@/hooks/useExporter'
 import { useEditorStore } from '@/store/editorStore'
 import { loadMediaAssetUrl } from '@/lib/mediaStorage'
 import { clearMediaCache } from '@/lib/canvasRenderer'
-import { ZoomIn, ZoomOut, PaintBucket, Scissors, Play, Pause, Undo, Redo, SkipBack, SkipForward, Plus } from 'lucide-react'
-import { createZoomMotion } from '@/store/editorStore'
-import { seekAllVideos } from '@/lib/canvasRenderer'
+import { ZoomIn, ZoomOut, PaintBucket, Scissors } from 'lucide-react'
 import type { Clip } from '@/types'
 
 type MobilePanel = 'background' | 'trim' | 'zoom' | null
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stageHostRef = useRef<HTMLDivElement>(null)
   const restoredMediaRef = useRef(false)
-  const { clips, currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding, isPlaying, selectedClipId, selectedZoomMotionId, zoomMotions, isBackgroundPickerOpen, setBackgroundPickerOpen, undo, redo, canUndo, canRedo, splitClipAtTime, addZoomMotion, playbackRate, setPlaybackRate } = useEditorStore()
+  const { clips, currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding, isPlaying, selectedClipId, selectedZoomMotionId, zoomMotions, isBackgroundPickerOpen, setBackgroundPickerOpen } = useEditorStore()
   const [stageSize, setStageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>(null)
   const { togglePlay, seek } = usePlayer(canvasRef)
@@ -323,77 +315,7 @@ function App() {
             </div>
           </div>
 
-          {/* Row 2: action icons grid — quick access */}
-          <div className="flex items-center gap-1 flex-wrap">
-            <button onClick={undo} disabled={!canUndo} className="h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 disabled:opacity-30 cursor-pointer">
-              <Undo className="w-4 h-4" />
-            </button>
-            <button onClick={redo} disabled={!canRedo} className="h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 disabled:opacity-30 cursor-pointer">
-              <Redo className="w-4 h-4" />
-            </button>
-
-            <div className="w-px h-5 bg-gray-200" />
-
-            <button onClick={() => { seek(currentTime - 5) }} className="h-8 px-2 text-[10px] font-mono rounded-lg bg-gray-100 text-gray-600 cursor-pointer">-5s</button>
-            <button onClick={() => { seek(currentTime + 5) }} className="h-8 px-2 text-[10px] font-mono rounded-lg bg-gray-100 text-gray-600 cursor-pointer">+5s</button>
-            <button onClick={() => { setCurrentTime(0); seekAllVideos(clips, 0, playbackRate) }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 cursor-pointer">
-              <SkipBack className="w-3.5 h-3.5" />
-            </button>
-            <button onClick={() => { const d = totalDuration(); setCurrentTime(d); seekAllVideos(clips, d, playbackRate) }} className="h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 cursor-pointer">
-              <SkipForward className="w-3.5 h-3.5" />
-            </button>
-
-            <div className="w-px h-5 bg-gray-200" />
-
-            {[1, 2, 3].map(rate => (
-              <button
-                key={rate}
-                onClick={() => setPlaybackRate(rate)}
-                className={`h-8 px-2 text-[10px] font-mono rounded-lg cursor-pointer ${
-                  playbackRate === rate ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                {rate}x
-              </button>
-            ))}
-
-            <div className="w-px h-5 bg-gray-200" />
-
-            <button
-              onClick={() => {
-                const didSplit = splitClipAtTime(currentTime)
-                if (didSplit) seek(currentTime)
-              }}
-              disabled={!clips.some((c) => {
-                const eff = (c.duration - c.trimStart - c.trimEnd) / c.speed
-                return currentTime > c.startTime + 1/30 && currentTime < c.startTime + eff - 1/30
-              })}
-              className="h-8 w-8 flex items-center justify-center rounded-lg bg-gray-100 text-gray-600 disabled:opacity-30 cursor-pointer"
-            >
-              <Scissors className="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              onClick={() => addZoomMotion(createZoomMotion({ startTime: currentTime }))}
-              className="h-8 w-8 flex items-center justify-center rounded-lg bg-amber-50 text-amber-600 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={togglePlay}
-              className="h-8 px-2 flex items-center gap-1 rounded-lg bg-gray-800 text-white text-[10px] font-medium cursor-pointer"
-            >
-              {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-              {isPlaying ? 'Stop' : 'Play'}
-            </button>
-
-            <span className="text-[10px] text-gray-500 font-mono ml-auto">
-              {formatTime(currentTime)} / {formatTime(totalDuration())}
-            </span>
-          </div>
-
-          {/* Row 3: active panel content */}
+          {/* Row 2: active panel content (replaces dialog) */}
           {mobilePanel && (
             <div className="max-h-[40vh] overflow-y-auto">
               {mobilePanel === 'background' && <BackgroundPicker />}
@@ -403,7 +325,7 @@ function App() {
           )}
         </div>
 
-        <Timeline onClipLongPress={() => setMobilePanel('trim')} onZoomLongPress={() => setMobilePanel('zoom')} />
+        <Timeline />
       </div>
 
     </div>
