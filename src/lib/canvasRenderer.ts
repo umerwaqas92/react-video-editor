@@ -4,6 +4,11 @@ import type { Background } from '@/store/editorStore'
 const videoCache = new Map<string, HTMLVideoElement>()
 const imageCache = new Map<string, HTMLImageElement>()
 
+let onSeeked: (() => void) | null = null
+export function setOnSeeked(cb: (() => void) | null) {
+  onSeeked = cb
+}
+
 export function getVideoElement(src: string): HTMLVideoElement {
   if (!videoCache.has(src)) {
     const video = document.createElement('video')
@@ -81,11 +86,9 @@ export function syncPlayback(clips: Clip[], time: number) {
   }
 
   if (clip.id === activeClipId) {
-    // Same clip — video is already playing, just check it hasn't run past trimEnd
-    if (activeVideo && activeVideo.currentTime >= clip.duration - clip.trimEnd - 0.05) {
-      activeVideo.pause()
-      activeVideo = null
-      activeClipId = null
+    // Same clip — video already playing, make sure it hasn't paused on its own
+    if (activeVideo && activeVideo.paused) {
+      activeVideo.play().catch(() => {})
     }
     return
   }
@@ -117,15 +120,27 @@ export function stopAllVideos() {
 }
 
 export function seekAllVideos(clips: Clip[], time: number) {
-  stopAllVideos()
   const clip = findClipAtTime(clips, time)
   if (clip && clip.type === 'video') {
     const video = getVideoElement(clip.src)
     const sourceTime = clip.trimStart + (time - clip.startTime) * clip.speed
-    video.currentTime = Math.min(sourceTime, clip.duration - clip.trimEnd - 0.05)
+    const targetTime = Math.min(sourceTime, clip.duration - clip.trimEnd - 0.05)
     video.playbackRate = clip.speed
     activeVideo = video
     activeClipId = clip.id
+    // Only seek if difference is significant
+    if (Math.abs(video.currentTime - targetTime) > 0.02) {
+      video.currentTime = targetTime
+      // Fire redraw when seek completes and frame is ready
+      const onSeekDone = () => {
+        video.removeEventListener('seeked', onSeekDone)
+        onSeeked?.()
+      }
+      video.addEventListener('seeked', onSeekDone, { once: true })
+    }
+  } else {
+    activeVideo = null
+    activeClipId = null
   }
 }
 
@@ -173,7 +188,7 @@ export function drawFrame(
       if (video.readyState >= 2) {
         const vw = video.videoWidth || cssW
         const vh = video.videoHeight || cssH
-        const scale = Math.max(cssW / vw, cssH / vh)
+        const scale = Math.min(cssW / vw, cssH / vh)
         const sw = vw * scale
         const sh = vh * scale
         ctx.drawImage(video, (cssW - sw) / 2, (cssH - sh) / 2, sw, sh)
@@ -181,7 +196,7 @@ export function drawFrame(
     } else {
       const img = imageCache.get(clip.src)
       if (img) {
-        const scale = Math.max(cssW / img.width, cssH / img.height)
+        const scale = Math.min(cssW / img.width, cssH / img.height)
         const sw = img.width * scale
         const sh = img.height * scale
         ctx.drawImage(img, (cssW - sw) / 2, (cssH - sh) / 2, sw, sh)

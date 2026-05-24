@@ -8,6 +8,7 @@ interface EditorStore {
   selectedClipId: string | null
   background: Background
   devicePadding: number
+  previewZoom: number
   currentTime: number
   isPlaying: boolean
 
@@ -17,6 +18,7 @@ interface EditorStore {
   selectClip: (id: string | null) => void
   setBackground: (bg: Background) => void
   setDevicePadding: (padding: number) => void
+  setPreviewZoom: (zoom: number) => void
   setCurrentTime: (time: number) => void
   setIsPlaying: (playing: boolean) => void
   getClipEndTime: (clip: Clip) => number
@@ -46,6 +48,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   selectedClipId: null,
   background: { type: 'color', value: '#000000' },
   devicePadding: 40,
+  previewZoom: 1,
   currentTime: 0,
   isPlaying: false,
 
@@ -87,6 +90,8 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   setBackground: (bg) => set({ background: bg }),
 
   setDevicePadding: (padding) => set({ devicePadding: padding }),
+
+  setPreviewZoom: (zoom) => set({ previewZoom: zoom }),
 
   setCurrentTime: (time) => set({ currentTime: time }),
 

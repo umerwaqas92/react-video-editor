@@ -1,21 +1,34 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 import type { Clip } from '@/types'
-import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut } from 'lucide-react'
+import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { seekAllVideos } from '@/lib/canvasRenderer'
+
+function getInterval(pps: number): number {
+  const minPx = 55
+  const raw = minPx / pps
+  const nice = [0.5, 1, 2, 5, 10, 15, 30, 60]
+  for (const n of nice) {
+    if (n >= raw) return n
+  }
+  return 60
+}
 
 export function Timeline() {
   const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime } = useEditorStore()
   const dragRef = useRef<{ clipId: string; fromIndex: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const rulerScrollRef = useRef<HTMLDivElement>(null)
-  const [zoom, setZoom] = useState(60)
+  const [zoom, setZoom] = useState(20)
 
   const pixelsPerSecond = zoom
-  const totalWidth = Math.max(totalDuration() * pixelsPerSecond, 200)
+  const duration = totalDuration()
+  const totalWidth = Math.max(duration * pixelsPerSecond, 200)
   const playheadX = currentTime * pixelsPerSecond
 
-  // Auto-scroll to keep playhead visible during playback
+  const interval = getInterval(pixelsPerSecond)
+
+  // Auto-scroll
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -26,39 +39,33 @@ export function Timeline() {
     }
   }, [playheadX])
 
-  // Sync ruler scroll with track scroll
-  useEffect(() => {
-    const track = scrollRef.current
-    const ruler = rulerScrollRef.current
-    if (!track || !ruler) return
-    const onScroll = () => { ruler.scrollLeft = track.scrollLeft }
-    track.addEventListener('scroll', onScroll, { passive: true })
-    return () => track.removeEventListener('scroll', onScroll)
-  }, [])
+  const seekTo = useCallback((time: number) => {
+    const clamped = Math.max(0, Math.min(time, duration))
+    setCurrentTime(clamped)
+    const state = useEditorStore.getState()
+    seekAllVideos(state.clips, clamped)
+  }, [duration, setCurrentTime])
 
   const handleTrackClick = useCallback((e: React.MouseEvent) => {
     const el = scrollRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
     const x = e.clientX - rect.left + el.scrollLeft
-    const time = Math.max(0, x / pixelsPerSecond)
-    setCurrentTime(Math.min(time, totalDuration()))
-  }, [pixelsPerSecond, setCurrentTime, totalDuration])
+    seekTo(x / pixelsPerSecond)
+  }, [pixelsPerSecond, seekTo])
 
-  const handleDragStart = (clipId: string, fromIndex: number) => {
-    dragRef.current = { clipId, fromIndex }
-  }
-
-  const handleDragOver = (e: React.DragEvent, toIndex: number) => {
-    e.preventDefault()
-    if (!dragRef.current || dragRef.current.fromIndex === toIndex) return
-    const { fromIndex } = dragRef.current
-    reorderClips(fromIndex, toIndex)
-    dragRef.current.fromIndex = toIndex
-  }
-
-  const handleDragEnd = () => {
-    dragRef.current = null
+  // Build time ruler labels
+  const rulerLabels: { pos: number; label: string }[] = []
+  const totalIntervals = Math.ceil(duration / interval)
+  for (let i = 0; i <= totalIntervals; i++) {
+    const t = i * interval
+    if (t > duration + 0.01) break
+    rulerLabels.push({
+      pos: t * pixelsPerSecond,
+      label: t >= 60
+        ? `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`
+        : `${t % 1 !== 0 ? t.toFixed(1) : t}s`,
+    })
   }
 
   return (
@@ -69,13 +76,13 @@ export function Timeline() {
           variant="ghost"
           size="icon"
           className="h-6 w-6"
-          onClick={() => setZoom(z => Math.max(20, z - 15))}
+          onClick={() => setZoom(z => Math.max(5, z - 5))}
         >
           <ZoomOut className="w-3.5 h-3.5" />
         </Button>
         <input
           type="range"
-          min={20}
+          min={5}
           max={200}
           value={zoom}
           onChange={e => setZoom(Number(e.target.value))}
@@ -85,17 +92,39 @@ export function Timeline() {
           variant="ghost"
           size="icon"
           className="h-6 w-6"
-          onClick={() => setZoom(z => Math.min(200, z + 15))}
+          onClick={() => setZoom(z => Math.min(200, z + 5))}
         >
           <ZoomIn className="w-3.5 h-3.5" />
         </Button>
         <span className="text-[10px] text-white/40 font-mono ml-2">{zoom}%</span>
+
+        <div className="w-px h-4 bg-white/10 mx-1" />
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={() => seekTo(0)}
+          title="Go to start"
+        >
+          <SkipBack className="w-3.5 h-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={() => seekTo(duration)}
+          title="Go to end"
+        >
+          <SkipForward className="w-3.5 h-3.5" />
+        </Button>
       </div>
 
-      {/* Clip track with playhead */}
+      {/* Clip track + ruler wrapped in single scrollable container */}
       <div ref={scrollRef} className="overflow-x-auto cursor-pointer" onClick={handleTrackClick}>
+        {/* Clip track */}
         <div
-          className="flex items-center gap-1 min-h-[56px] relative"
+          className="flex items-center gap-1 relative" style={{ minHeight: 44 }}
           style={{ minWidth: totalWidth + 50 }}
         >
           {clips.map((clip, index) => (
@@ -105,9 +134,17 @@ export function Timeline() {
               isSelected={clip.id === selectedClipId}
               onSelect={(e) => { e.stopPropagation(); selectClip(clip.id) }}
               pixelsPerSecond={pixelsPerSecond}
-              onDragStart={() => handleDragStart(clip.id, index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDragEnd={handleDragEnd}
+              onDragStart={() => {
+                dragRef.current = { clipId: clip.id, fromIndex: index }
+              }}
+              onDragOver={(e) => {
+                e.preventDefault()
+                if (!dragRef.current || dragRef.current.fromIndex === index) return
+                const { fromIndex } = dragRef.current
+                reorderClips(fromIndex, index)
+                dragRef.current.fromIndex = index
+              }}
+              onDragEnd={() => { dragRef.current = null }}
             />
           ))}
           {clips.length === 0 && (
@@ -121,30 +158,29 @@ export function Timeline() {
             className="absolute top-0 bottom-0 z-20 pointer-events-none"
             style={{ left: playheadX }}
           >
-            {/* Triangle handle */}
             <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-red-500 -mt-0.5 ml-[-6px]" />
-            {/* Vertical line */}
             <div className="w-px bg-red-500 h-full ml-[-0.5px]" />
           </div>
         </div>
-      </div>
 
-      {/* Time ruler with click-to-seek */}
-      {clips.length > 0 && (
-        <div ref={rulerScrollRef} className="overflow-hidden mt-2 border-t border-white/5 pt-2 cursor-pointer" onClick={handleTrackClick}>
-          <div className="flex relative" style={{ minWidth: totalWidth + 50 }}>
-            {Array.from({ length: Math.ceil(totalDuration()) + 1 }).map((_, i) => (
-              <div
-                key={i}
-                className="text-[10px] text-white/30 font-mono flex-shrink-0 border-l border-white/5 pl-0.5 select-none"
-                style={{ width: pixelsPerSecond }}
-              >
-                {i}s
-              </div>
-            ))}
+        {/* Time ruler — inside the scrollable wrapper so scrollbar sits below it */}
+        {clips.length > 0 && (
+          <div className="mt-2 border-t border-white/5 pt-2" style={{ height: 24 }}>
+            <div className="relative h-full" style={{ minWidth: totalWidth + 50 }}>
+              {rulerLabels.map(({ pos, label }) => (
+                <div
+                  key={pos}
+                  className="absolute top-0 text-[10px] text-white/30 font-mono select-none"
+                  style={{ left: pos }}
+                >
+                  <div className="w-px h-1.5 bg-white/10 mb-0.5" />
+                  {label}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
@@ -178,26 +214,30 @@ function TimelineClipItem({
       onDragEnd={onDragEnd}
       className={`
         relative flex-shrink-0 rounded-md overflow-hidden cursor-pointer border-2 transition-colors
-        ${isSelected ? 'border-blue-500 ring-1 ring-blue-500/30' : 'border-white/10 hover:border-white/30'}
+        ${isSelected ? 'border-white/80 shadow-[0_0_0_1px_rgba(255,255,255,0.3)]' : 'border-white/10 hover:border-white/30'}
       `}
       style={{ width }}
     >
-      <div className="bg-neutral-800 h-12 flex items-center justify-center">
+      <div className={`h-full flex items-center justify-center ${
+        clip.type === 'video'
+          ? 'bg-gradient-to-br from-purple-700/80 to-orange-600/80'
+          : 'bg-gradient-to-br from-emerald-700/80 to-teal-500/80'
+      }`}>
         {clip.type === 'video' ? (
-          <Film className="w-4 h-4 text-white/40" />
+          <Film className="w-3.5 h-3.5 text-white/60" />
         ) : (
-          <ImageIcon className="w-4 h-4 text-white/40" />
+          <ImageIcon className="w-3.5 h-3.5 text-white/60" />
         )}
       </div>
-      <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-1.5 py-0.5 flex items-center justify-between">
-        <span className="text-[10px] text-white/80 truncate max-w-[55%]">{clip.name}</span>
-        <span className="text-[10px] text-white/50 font-mono">{effectiveDuration.toFixed(1)}s</span>
+      <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-px flex items-center justify-between">
+        <span className="text-[9px] text-white/80 truncate max-w-[55%]">{clip.name}</span>
+        <span className="text-[9px] text-white/50 font-mono">{effectiveDuration.toFixed(1)}s</span>
       </div>
-      <div className="absolute top-1 left-1 cursor-grab text-white/30 hover:text-white/60">
-        <GripHorizontal className="w-3 h-3" />
+      <div className="absolute top-0.5 left-0.5 cursor-grab text-white/30 hover:text-white/60">
+        <GripHorizontal className="w-2.5 h-2.5" />
       </div>
       {clip.speed !== 1 && (
-        <div className="absolute top-1 right-1 bg-yellow-600/80 text-[9px] text-white px-1 rounded font-mono">
+        <div className="absolute top-0.5 right-0.5 bg-white/20 backdrop-blur text-[8px] text-white px-1 rounded-full font-mono">
           {clip.speed}x
         </div>
       )}
