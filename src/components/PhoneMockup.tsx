@@ -199,27 +199,35 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
   }, [addClip])
 
   // Compute zoom from active zoom motions
-  // Snappy curve: fast zoom-in (0→30%), hold at peak (30→70%), fast zoom-out (70→100%)
+  // Fixed timing: 0.5s zoom-in, hold at peak, 0.5s zoom-out
+  const ZOOM_IN = 0.5
+  const ZOOM_OUT = 0.5
   let motionZoom = 1
   let zoomOriginX = 0.5
   let zoomOriginY = 0.5
   for (const m of zoomMotions) {
-    const progress = (currentTime - m.startTime) / m.duration
-    if (progress >= 0 && progress <= 1) {
-      let p: number
-      if (progress <= 0.3) {
-        p = (m.peakScale - 1) * (progress / 0.3)
-      } else if (progress <= 0.7) {
-        p = m.peakScale - 1
-      } else {
-        p = (m.peakScale - 1) * ((1 - progress) / 0.3)
-      }
-      const scale = 1 + p
-      motionZoom *= scale
-      if (scale > 1.01) {
-        zoomOriginX = m.targetX
-        zoomOriginY = m.targetY
-      }
+    const elapsed = currentTime - m.startTime
+    if (elapsed < 0 || elapsed > m.duration) continue
+    const holdDuration = m.duration - ZOOM_IN - ZOOM_OUT
+
+    let p: number
+    if (holdDuration <= 0) {
+      // Very short duration: simple in-out with midpoint at half
+      const progress = elapsed / m.duration
+      p = (m.peakScale - 1) * (progress <= 0.5 ? progress / 0.5 : (1 - progress) / 0.5)
+    } else if (elapsed <= ZOOM_IN) {
+      p = (m.peakScale - 1) * (elapsed / ZOOM_IN)
+    } else if (elapsed <= ZOOM_IN + holdDuration) {
+      p = m.peakScale - 1
+    } else {
+      p = (m.peakScale - 1) * ((m.duration - elapsed) / ZOOM_OUT)
+    }
+
+    const scale = 1 + p
+    motionZoom *= scale
+    if (scale > 1.01) {
+      zoomOriginX = m.targetX
+      zoomOriginY = m.targetY
     }
   }
 
