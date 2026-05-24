@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 import type { Clip } from '@/types'
-import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors } from 'lucide-react'
+import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { seekAllVideos } from '@/lib/canvasRenderer'
 
@@ -16,7 +16,7 @@ function getInterval(pps: number): number {
 }
 
 export function Timeline() {
-  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime } = useEditorStore()
+  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom } = useEditorStore()
   const dragRef = useRef<{ clipId: string; fromIndex: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isScrubbing, setIsScrubbing] = useState(false)
@@ -27,11 +27,6 @@ export function Timeline() {
   const playheadX = currentTime * pixelsPerSecond
 
   const interval = getInterval(pixelsPerSecond)
-  const canSplitAtCurrentTime = clips.some((clip) => {
-    const effective = (clip.duration - clip.trimStart - clip.trimEnd) / clip.speed
-    const minSegment = 1 / 30
-    return currentTime > clip.startTime + minSegment && currentTime < clip.startTime + effective - minSegment
-  })
 
   // Auto-scroll
   useEffect(() => {
@@ -154,19 +149,6 @@ export function Timeline() {
           title="Go to end"
         >
           <SkipForward className="w-3.5 h-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={() => {
-            const didSplit = splitClipAtTime(currentTime)
-            if (didSplit) seekTo(currentTime)
-          }}
-          title="Split at playhead"
-          disabled={!canSplitAtCurrentTime}
-        >
-          <Scissors className="w-3.5 h-3.5" />
         </Button>
       </div>
 

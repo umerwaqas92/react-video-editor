@@ -37,7 +37,6 @@ interface EditorStore {
   getEffectiveDuration: (clip: Clip) => number
   totalDuration: () => number
   reorderClips: (fromIndex: number, toIndex: number) => void
-  splitClipAtTime: (time: number) => boolean
 }
 
 let idCounter = 0
@@ -98,7 +97,10 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
       selectedClipId: state.selectedClipId === id ? null : state.selectedClipId,
     })
     if (mediaStorageKey) {
-      void deleteMediaAsset(mediaStorageKey)
+      const stillUsedByOtherClips = newClips.some(c => c.mediaStorageKey === mediaStorageKey)
+      if (!stillUsedByOtherClips) {
+        void deleteMediaAsset(mediaStorageKey)
+      }
     }
   },
 
@@ -165,37 +167,6 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
 
       return { clips: repositioned }
     })
-  },
-
-  splitClipAtTime: (time) => {
-    const state = get()
-    const minSegment = 1 / 30
-    const index = state.clips.findIndex((clip) => {
-      const effective = (clip.duration - clip.trimStart - clip.trimEnd) / clip.speed
-      return time > clip.startTime + minSegment && time < clip.startTime + effective - minSegment
-    })
-    if (index === -1) return false
-
-    const original = state.clips[index]
-    const sourceCut = original.trimStart + (time - original.startTime) * original.speed
-    const firstClip: Clip = {
-      ...original,
-      trimEnd: Math.max(0, original.duration - sourceCut),
-    }
-    const secondClip: Clip = {
-      ...original,
-      id: generateId(),
-      trimStart: Math.min(original.duration, sourceCut),
-      startTime: time,
-    }
-    const newClips = [
-      ...state.clips.slice(0, index),
-      firstClip,
-      secondClip,
-      ...state.clips.slice(index + 1),
-    ]
-    set({ clips: newClips, selectedClipId: secondClip.id })
-    return true
   },
 }), {
   name: 'react-video-editor-state',

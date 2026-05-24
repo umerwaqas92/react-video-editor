@@ -139,9 +139,6 @@ function App() {
                 style={{
                   width: `${stageSize.width}px`,
                   height: `${stageSize.height}px`,
-                  transform: `scale(${previewZoom})`,
-                  transformOrigin: 'center center',
-                  transition: 'transform 0.15s ease',
                   ...bgStyle,
                 }}
               >
