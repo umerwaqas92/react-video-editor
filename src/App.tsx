@@ -58,7 +58,7 @@ function App() {
     : { backgroundImage: `url(${background.src})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
 
   return (
-    <div className="flex flex-col h-screen bg-neutral-950">
+    <div className="flex flex-col h-screen bg-gray-100">
       <Header />
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
         {/* Preview area — shows background behind device */}

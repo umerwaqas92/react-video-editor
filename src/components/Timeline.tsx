@@ -8,7 +8,7 @@ import { seekAllVideos } from '@/lib/canvasRenderer'
 function getInterval(pps: number): number {
   const minPx = 55
   const raw = minPx / pps
-  const nice = [0.5, 1, 2, 5, 10, 15, 30, 60]
+  const nice = [0.5, 1, 2, 5, 10, 15, 30, 60, 120]
   for (const n of nice) {
     if (n >= raw) return n
   }
@@ -69,24 +69,24 @@ export function Timeline() {
   }
 
   return (
-    <div className="bg-neutral-900 border-t border-white/10 p-3">
+    <div className="bg-white border-t border-gray-200 p-3">
       {/* Zoom controls */}
       <div className="flex items-center gap-1 mb-2">
         <Button
           variant="ghost"
           size="icon"
           className="h-6 w-6"
-          onClick={() => setZoom(z => Math.max(5, z - 5))}
+          onClick={() => setZoom(z => Math.max(2, z - 5))}
         >
           <ZoomOut className="w-3.5 h-3.5" />
         </Button>
         <input
           type="range"
-          min={5}
+          min={2}
           max={200}
           value={zoom}
           onChange={e => setZoom(Number(e.target.value))}
-          className="w-20 h-1 accent-white/60"
+          className="w-20 h-1 accent-gray-600"
         />
         <Button
           variant="ghost"
@@ -96,9 +96,9 @@ export function Timeline() {
         >
           <ZoomIn className="w-3.5 h-3.5" />
         </Button>
-        <span className="text-[10px] text-white/40 font-mono ml-2">{zoom}%</span>
+        <span className="text-[10px] text-gray-400 font-mono ml-2">{zoom}%</span>
 
-        <div className="w-px h-4 bg-white/10 mx-1" />
+        <div className="w-px h-4 bg-gray-200 mx-1" />
 
         <Button
           variant="ghost"
@@ -124,15 +124,15 @@ export function Timeline() {
       <div ref={scrollRef} className="cursor-pointer" style={{ overflowX: 'auto', overflowY: 'clip' }} onClick={handleTrackClick}>
         {/* Time ruler — at the top */}
         {clips.length > 0 && (
-          <div className="mb-1 pb-1 border-b border-white/5" style={{ height: 24 }}>
+          <div className="mb-1 pb-1 border-b border-gray-200" style={{ height: 24 }}>
             <div className="relative h-full" style={{ minWidth: totalWidth + 50 }}>
               {rulerLabels.map(({ pos, label }) => (
                 <div
                   key={pos}
-                  className="absolute bottom-0 text-[10px] text-white/30 font-mono select-none"
+                  className="absolute bottom-0 text-[10px] text-gray-400 font-mono select-none"
                   style={{ left: pos }}
                 >
-                  <div className="w-px h-1.5 bg-white/10 mt-0.5" />
+                  <div className="w-px h-1.5 bg-gray-300 mt-0.5" />
                   {label}
                 </div>
               ))}
@@ -166,7 +166,7 @@ export function Timeline() {
             />
           ))}
           {clips.length === 0 && (
-            <div className="flex items-center justify-center w-full text-white/30 text-sm py-4">
+            <div className="flex items-center justify-center w-full text-gray-400 text-sm py-4">
               Add videos or images to start editing
             </div>
           )}
@@ -214,7 +214,7 @@ function TimelineClipItem({
       onDragEnd={onDragEnd}
       className={`
         relative flex-shrink-0 rounded-md overflow-hidden cursor-pointer border-2 transition-colors
-        ${isSelected ? 'border-white/80 shadow-[0_0_0_1px_rgba(255,255,255,0.3)]' : 'border-white/10 hover:border-white/30'}
+        ${isSelected ? 'border-gray-800 shadow-[0_0_0_2px_rgba(0,0,0,0.15)]' : 'border-gray-200 hover:border-gray-400'}
       `}
       style={{ width }}
     >

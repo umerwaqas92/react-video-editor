@@ -36,7 +36,7 @@ export function Header() {
         type: 'image',
         src: url,
         name: file.name,
-        duration: 5, // default 5s for images
+        duration: 5,
       }))
     }
     e.target.value = ''
@@ -56,9 +56,9 @@ export function Header() {
   }, [setIsPlaying, setCurrentTime])
 
   return (
-    <header className="flex items-center justify-between px-4 py-2 bg-neutral-900 border-b border-white/10">
+    <header className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200">
       <div className="flex items-center gap-2">
-        <h1 className="text-base font-semibold text-white">Video Editor</h1>
+        <h1 className="text-base font-semibold text-gray-800">Video Editor</h1>
       </div>
 
       <div className="flex items-center gap-2">
@@ -66,33 +66,21 @@ export function Header() {
           <Plus className="w-4 h-4" />
           Add Video
         </Button>
-        <input
-          ref={videoInputRef}
-          type="file"
-          accept="video/*"
-          className="hidden"
-          onChange={handleVideoSelect}
-        />
+        <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={handleVideoSelect} />
 
         <Button variant="ghost" size="sm" onClick={() => imageInputRef.current?.click()}>
           <ImageIcon className="w-4 h-4" />
           Add Image
         </Button>
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleImageSelect}
-        />
+        <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
 
-        <div className="w-px h-6 bg-white/20 mx-1" />
+        <div className="w-px h-6 bg-gray-200 mx-1" />
 
         <Button variant="outline" size="icon" onClick={togglePlay}>
           {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
         </Button>
 
-        <span className="text-xs text-white/60 font-mono min-w-[80px] text-right">
+        <span className="text-xs text-gray-500 font-mono min-w-[80px] text-right">
           {formatTime(currentTime)} / {formatTime(totalDuration())}
         </span>
       </div>

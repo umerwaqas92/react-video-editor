@@ -8,10 +8,10 @@ function Button({ className, variant = "default", size = "md", ...props }: React
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-md font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
-        variant === "default" && "bg-white text-black hover:bg-white/90",
-        variant === "outline" && "border border-white/20 bg-transparent hover:bg-white/10 text-white",
-        variant === "ghost" && "hover:bg-white/10 text-white",
+        "inline-flex items-center justify-center gap-2 rounded-md font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+        variant === "default" && "bg-gray-900 text-white hover:bg-gray-800",
+        variant === "outline" && "border border-gray-300 bg-white hover:bg-gray-50 text-gray-700",
+        variant === "ghost" && "hover:bg-gray-100 text-gray-600",
         variant === "destructive" && "bg-red-600 text-white hover:bg-red-700",
         size === "sm" && "h-8 px-3 text-xs",
         size === "md" && "h-9 px-4",

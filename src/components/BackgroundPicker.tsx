@@ -27,7 +27,7 @@ export function BackgroundPicker() {
       <div className="absolute top-3 left-3 z-20">
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-neutral-900/90 backdrop-blur border border-white/10 text-white/70 hover:text-white text-xs cursor-pointer shadow-lg"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/95 backdrop-blur border border-gray-200 text-gray-600 hover:text-gray-800 text-xs cursor-pointer shadow-lg"
         >
           <PaintBucket className="w-3.5 h-3.5" />
           Background
@@ -37,23 +37,19 @@ export function BackgroundPicker() {
   }
 
   return (
-    <div className="absolute top-3 left-3 z-20 w-56 bg-neutral-900/95 backdrop-blur border border-white/10 rounded-lg shadow-xl p-3 space-y-2.5">
+    <div className="absolute top-3 left-3 z-20 w-56 bg-white/95 backdrop-blur border border-gray-200 rounded-lg shadow-lg p-3 space-y-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-white flex items-center gap-1.5">
+        <span className="text-xs font-medium text-gray-800 flex items-center gap-1.5">
           <PaintBucket className="w-3.5 h-3.5" />
           Background
         </span>
-        <button
-          onClick={() => setIsOpen(false)}
-          className="text-white/30 hover:text-white/60 cursor-pointer"
-        >
+        <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Color presets */}
       <div>
-        <p className="text-[10px] text-white/40 mb-1">Color</p>
+        <p className="text-[10px] text-gray-400 mb-1">Color</p>
         <div className="flex gap-1 flex-wrap">
           {COLOR_PRESETS.map(color => (
             <button
@@ -61,8 +57,8 @@ export function BackgroundPicker() {
               onClick={() => setBackground({ type: 'color', value: color })}
               className={`w-6 h-6 rounded-full border-2 cursor-pointer transition-colors ${
                 background.type === 'color' && background.value === color
-                  ? 'border-white ring-1 ring-white/30'
-                  : 'border-white/10 hover:border-white/40'
+                  ? 'border-gray-800 ring-1 ring-gray-300'
+                  : 'border-gray-200 hover:border-gray-400'
               }`}
               style={{ backgroundColor: color }}
             />
@@ -70,7 +66,6 @@ export function BackgroundPicker() {
         </div>
       </div>
 
-      {/* Custom color */}
       <div className="flex items-center gap-1.5">
         <input
           type="color"
@@ -88,46 +83,32 @@ export function BackgroundPicker() {
             }
           }}
           placeholder="#000000"
-          className="bg-neutral-800 text-white text-[11px] px-2 py-1 rounded border border-white/10 w-20 font-mono"
+          className="bg-gray-100 text-gray-800 text-[11px] px-2 py-1 rounded border border-gray-200 w-20 font-mono"
         />
       </div>
 
-      {/* Image upload */}
       <div>
-        <p className="text-[10px] text-white/40 mb-1">Image</p>
+        <p className="text-[10px] text-gray-400 mb-1">Image</p>
         <Button variant="outline" size="sm" className="h-7 text-[11px] w-full" onClick={() => fileInputRef.current?.click()}>
           Upload Image
         </Button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleImageSelect}
-        />
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
         {background.type === 'image' && (
           <div className="mt-1.5 flex items-center gap-2">
             <img src={background.src} alt="bg" className="w-8 h-8 object-cover rounded" />
-            <button
-              onClick={() => setBackground({ type: 'color', value: '#000000' })}
-              className="text-[10px] text-red-400 hover:text-red-300 cursor-pointer"
-            >
+            <button onClick={() => setBackground({ type: 'color', value: '#000000' })} className="text-[10px] text-red-500 hover:text-red-400 cursor-pointer">
               Remove
             </button>
           </div>
         )}
       </div>
 
-      {/* Padding */}
       <div>
-        <p className="text-[10px] text-white/40 mb-1">Padding <span className="font-mono">{devicePadding}px</span></p>
+        <p className="text-[10px] text-gray-400 mb-1">Padding <span className="font-mono">{devicePadding}px</span></p>
         <input
-          type="range"
-          min={0}
-          max={120}
-          value={devicePadding}
+          type="range" min={0} max={120} value={devicePadding}
           onChange={e => setDevicePadding(Number(e.target.value))}
-          className="w-full h-1 accent-white/60"
+          className="w-full h-1 accent-gray-600"
         />
       </div>
     </div>

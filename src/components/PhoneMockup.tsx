@@ -105,20 +105,20 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
       </div>
 
       {/* Zoom controls — bottom right */}
-      <div className="absolute bottom-3 right-3 z-20 flex items-center gap-0.5 bg-neutral-900/90 backdrop-blur border border-white/10 rounded-lg shadow-lg">
+      <div className="absolute bottom-3 right-3 z-20 flex items-center gap-0.5 bg-white/90 backdrop-blur border border-gray-200 rounded-lg shadow-lg">
         <button
           onClick={() => setPreviewZoom(Math.max(0.25, previewZoom - 0.1))}
-          className="p-1.5 text-white/60 hover:text-white cursor-pointer"
+          className="p-1.5 text-gray-400 hover:text-gray-700 cursor-pointer"
           title="Zoom out preview"
         >
           <ZoomOut className="w-3.5 h-3.5" />
         </button>
-        <span className="text-[10px] text-white/50 font-mono min-w-[36px] text-center select-none">
+        <span className="text-[10px] text-gray-500 font-mono min-w-[36px] text-center select-none">
           {Math.round(previewZoom * 100)}%
         </span>
         <button
           onClick={() => setPreviewZoom(Math.min(2, previewZoom + 0.1))}
-          className="p-1.5 text-white/60 hover:text-white cursor-pointer"
+          className="p-1.5 text-gray-400 hover:text-gray-700 cursor-pointer"
           title="Zoom in preview"
         >
           <ZoomIn className="w-3.5 h-3.5" />
