@@ -169,22 +169,10 @@ export function drawFrame(
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-  // Background
-  if (background.type === 'color') {
-    ctx.fillStyle = background.value
-    ctx.fillRect(0, 0, cssW, cssH)
-  } else {
-    const bgImg = imageCache.get(background.src)
-    if (bgImg) {
-      const scale = Math.max(cssW / bgImg.width, cssH / bgImg.height)
-      const sw = bgImg.width * scale
-      const sh = bgImg.height * scale
-      ctx.drawImage(bgImg, (cssW - sw) / 2, (cssH - sh) / 2, sw, sh)
-    } else {
-      ctx.fillStyle = '#000'
-      ctx.fillRect(0, 0, cssW, cssH)
-    }
-  }
+  // Device canvas background is always black.
+  void background
+  ctx.fillStyle = '#000'
+  ctx.fillRect(0, 0, cssW, cssH)
 
   // Draw each visible clip
   for (const clip of clips) {

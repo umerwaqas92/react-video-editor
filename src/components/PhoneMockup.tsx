@@ -220,10 +220,10 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
             >
               <canvas
                 ref={resolvedRef}
-                className="w-full h-full block"
+                className="w-full h-full block bg-black"
               />
               {clips.length === 0 && !isDragOver && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/80">
+                <div className="absolute inset-0 flex items-center justify-center bg-black">
                   <div className="text-center text-white/60">
                     <svg className="w-10 h-10 mx-auto mb-2 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
