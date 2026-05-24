@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useEditorStore, createZoomMotion } from '@/store/editorStore'
 import type { Clip } from '@/types'
-import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors, Play, Pause, Undo, Redo } from 'lucide-react'
+import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors, Play, Pause, Undo, Redo, AlignStartHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { seekAllVideos } from '@/lib/canvasRenderer'
 
@@ -16,7 +16,7 @@ function getInterval(pps: number): number {
 }
 
 export function Timeline() {
-  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, removeZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion, isPlaying, setIsPlaying, playbackRate, setPlaybackRate, undo, redo, canUndo, canRedo } = useEditorStore()
+  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, removeZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion, isPlaying, setIsPlaying, playbackRate, setPlaybackRate, undo, redo, canUndo, canRedo, recalculateTimeline } = useEditorStore()
   const dragRef = useRef<{ clipId: string; fromIndex: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const seekRafRef = useRef<number | null>(null)
@@ -209,6 +209,16 @@ export function Timeline() {
           title="Add zoom motion"
         >
           <ZoomIn className="w-3.5 h-3.5 text-amber-500" />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={recalculateTimeline}
+          title="Recalculate timeline (close gaps)"
+        >
+          <AlignStartHorizontal className="w-3.5 h-3.5" />
         </Button>
 
         <div className="w-px h-4 bg-gray-200 mx-1" />

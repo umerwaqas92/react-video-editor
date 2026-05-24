@@ -42,6 +42,7 @@ interface EditorStore {
   totalDuration: () => number
   reorderClips: (fromIndex: number, toIndex: number) => void
   splitClipAtTime: (time: number) => boolean
+  recalculateTimeline: () => void
 
   addZoomMotion: (motion: ZoomMotion) => void
   removeZoomMotion: (id: string) => void
@@ -291,6 +292,19 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     ]
     set({ clips: newClips, selectedClipId: secondClip.id })
     return true
+  },
+
+  recalculateTimeline: () => {
+    get()._pushSnapshot()
+    set(state => {
+      let t = 0
+      const recalculated = state.clips.map(clip => {
+        const updated = { ...clip, startTime: t }
+        t += (clip.duration - clip.trimStart - clip.trimEnd) / clip.speed
+        return updated
+      })
+      return { clips: recalculated }
+    })
   },
 
   addZoomMotion: (motion) => {

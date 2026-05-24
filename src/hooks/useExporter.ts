@@ -41,38 +41,28 @@ export function useExporter(canvasRef: React.RefObject<HTMLCanvasElement | null>
       a.download = 'export.webm'
       a.click()
       URL.revokeObjectURL(url)
+      useEditorStore.getState().setIsPlaying(false)
       setExporting(false)
       setProgress(100)
     }
 
-    // Reset to start and play through
-    state.setCurrentTime(0)
-    state.setIsPlaying(false)
-
-    // Start recording
     recorder.start()
     setExporting(true)
     setProgress(0)
 
-    // Start playback
-    const startTime = performance.now()
-    const totalMs = duration * 1000
+    state.setCurrentTime(0)
+    state.setIsPlaying(true)
 
-    // Use requestAnimationFrame for progress
     const trackProgress = () => {
       if (!recorderRef.current || recorderRef.current.state === 'inactive') return
-      // Check if we should stop
-      const state = useEditorStore.getState()
-      if (state.currentTime >= duration - 0.05) {
-        recorder.stop()
-        state.setIsPlaying(false)
+      const s = useEditorStore.getState()
+      if (s.currentTime >= duration - 0.05) {
+        recorderRef.current.stop()
         return
       }
-      setProgress(Math.round((state.currentTime / duration) * 100))
+      setProgress(Math.round((s.currentTime / duration) * 100))
       requestAnimationFrame(trackProgress)
     }
-
-    state.setIsPlaying(true)
     requestAnimationFrame(trackProgress)
   }, [canvasRef])
 
