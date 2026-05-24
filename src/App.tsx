@@ -6,11 +6,43 @@ import { TrimEditor } from '@/components/TrimEditor'
 import { BackgroundPicker } from '@/components/BackgroundPicker'
 import { usePlayer } from '@/hooks/usePlayer'
 import { useEditorStore } from '@/store/editorStore'
+import { loadMediaAssetUrl } from '@/lib/mediaStorage'
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const restoredMediaRef = useRef(false)
   const { currentTime, setCurrentTime, totalDuration, background } = useEditorStore()
   const { togglePlay, seek } = usePlayer(canvasRef)
+
+  useEffect(() => {
+    if (restoredMediaRef.current) return
+    restoredMediaRef.current = true
+
+    const restoreMedia = async () => {
+      const state = useEditorStore.getState()
+
+      await Promise.all(state.clips.map(async (clip) => {
+        if (!clip.mediaStorageKey) return
+        const restoredUrl = await loadMediaAssetUrl(clip.mediaStorageKey)
+        if (restoredUrl) {
+          useEditorStore.getState().updateClip(clip.id, { src: restoredUrl })
+        }
+      }))
+
+      const freshState = useEditorStore.getState()
+      if (freshState.background.type === 'image' && freshState.background.mediaStorageKey) {
+        const restoredBgUrl = await loadMediaAssetUrl(freshState.background.mediaStorageKey)
+        if (restoredBgUrl) {
+          useEditorStore.getState().setBackground({
+            ...freshState.background,
+            src: restoredBgUrl,
+          })
+        }
+      }
+    }
+
+    void restoreMedia()
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

@@ -2,6 +2,7 @@ import { useRef, useCallback } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 import { Button } from '@/components/ui/button'
 import { PaintBucket, X } from 'lucide-react'
+import { deleteMediaAsset, saveMediaAsset } from '@/lib/mediaStorage'
 
 const COLOR_PRESETS = [
   '#000000', '#ffffff', '#1a1a2e', '#16213e', '#0f3460',
@@ -17,9 +18,18 @@ export function BackgroundPicker() {
     const file = e.target.files?.[0]
     if (!file) return
     const url = URL.createObjectURL(file)
-    setBackground({ type: 'image', src: url })
+    const previousBackground = background
+    const persistBackground = async () => {
+      const key = `bg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      const persisted = await saveMediaAsset(file, key)
+      if (previousBackground.type === 'image' && previousBackground.mediaStorageKey) {
+        void deleteMediaAsset(previousBackground.mediaStorageKey)
+      }
+      setBackground({ type: 'image', src: url, mediaStorageKey: persisted.mediaStorageKey, originalPath: persisted.originalPath })
+    }
+    void persistBackground()
     e.target.value = ''
-  }, [setBackground])
+  }, [background, setBackground])
 
   if (!isBackgroundPickerOpen) {
     return (
@@ -95,7 +105,15 @@ export function BackgroundPicker() {
         {background.type === 'image' && (
           <div className="mt-1.5 flex items-center gap-2">
             <img src={background.src} alt="bg" className="w-8 h-8 object-cover rounded" />
-            <button onClick={() => setBackground({ type: 'color', value: '#000000' })} className="text-[10px] text-red-500 hover:text-red-400 cursor-pointer">
+            <button
+              onClick={() => {
+                if (background.mediaStorageKey) {
+                  void deleteMediaAsset(background.mediaStorageKey)
+                }
+                setBackground({ type: 'color', value: '#000000' })
+              }}
+              className="text-[10px] text-red-500 hover:text-red-400 cursor-pointer"
+            >
               Remove
             </button>
           </div>

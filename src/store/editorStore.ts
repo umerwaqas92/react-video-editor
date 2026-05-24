@@ -1,8 +1,11 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { Clip } from '@/types'
+import { deleteMediaAsset } from '@/lib/mediaStorage'
 
-export type Background = { type: 'color'; value: string } | { type: 'image'; src: string }
+export type Background =
+  | { type: 'color'; value: string }
+  | { type: 'image'; src: string; mediaStorageKey?: string; originalPath?: string }
 
 interface EditorStore {
   clips: Clip[]
@@ -75,6 +78,7 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     const state = get()
     const clip = state.clips.find(c => c.id === id)
     if (!clip) return
+    const mediaStorageKey = clip.mediaStorageKey
     const removedStart = clip.startTime
     const removedDuration = get().getEffectiveDuration(clip)
     const newClips = state.clips
@@ -89,6 +93,9 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
       clips: newClips,
       selectedClipId: state.selectedClipId === id ? null : state.selectedClipId,
     })
+    if (mediaStorageKey) {
+      void deleteMediaAsset(mediaStorageKey)
+    }
   },
 
   updateClip: (id, updates) => {

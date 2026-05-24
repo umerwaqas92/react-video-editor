@@ -2,6 +2,7 @@ import { useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { useEditorStore, createClip } from '@/store/editorStore'
 import { Play, Pause, Plus, ImageIcon } from 'lucide-react'
+import { saveMediaAsset } from '@/lib/mediaStorage'
 
 export function Header() {
   const videoInputRef = useRef<HTMLInputElement>(null)
@@ -14,16 +15,22 @@ export function Header() {
     const url = URL.createObjectURL(file)
     const video = document.createElement('video')
     video.src = url
-    video.onloadedmetadata = () => {
+    video.onloadedmetadata = async () => {
       console.log('[AddVideo] metadata:', { n: file.name, d: video.duration, w: video.videoWidth, h: video.videoHeight })
-      addClip(createClip({
+      const clip = createClip({
         type: 'video',
         src: url,
         name: file.name,
         duration: video.duration,
         naturalWidth: video.videoWidth || 1920,
         naturalHeight: video.videoHeight || 1080,
-      }))
+      })
+      const persisted = await saveMediaAsset(file, clip.id)
+      addClip({
+        ...clip,
+        mediaStorageKey: persisted.mediaStorageKey,
+        originalPath: persisted.originalPath,
+      })
     }
     e.target.value = ''
   }, [addClip])
@@ -34,16 +41,22 @@ export function Header() {
     const url = URL.createObjectURL(file)
     const img = new Image()
     img.src = url
-    img.onload = () => {
+    img.onload = async () => {
       console.log('[AddImage] loaded:', { n: file.name, w: img.naturalWidth, h: img.naturalHeight })
-      addClip(createClip({
+      const clip = createClip({
         type: 'image',
         src: url,
         name: file.name,
         duration: 5,
         naturalWidth: img.naturalWidth || 1920,
         naturalHeight: img.naturalHeight || 1080,
-      }))
+      })
+      const persisted = await saveMediaAsset(file, clip.id)
+      addClip({
+        ...clip,
+        mediaStorageKey: persisted.mediaStorageKey,
+        originalPath: persisted.originalPath,
+      })
     }
     e.target.value = ''
   }, [addClip])

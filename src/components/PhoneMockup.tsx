@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import { drawFrame, preloadAssets, sizeCanvas, seekAllVideos, setOnSeeked, getVideoElement } from '@/lib/canvasRenderer'
 import { useEditorStore, createClip } from '@/store/editorStore'
 import { ZoomIn, ZoomOut, Upload } from 'lucide-react'
+import { saveMediaAsset } from '@/lib/mediaStorage'
 
 export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
   const innerRef = useRef<HTMLCanvasElement>(null)
@@ -142,16 +143,20 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
       if (file.type.startsWith('video/')) {
         const video = document.createElement('video')
         video.src = url
-        video.onloadedmetadata = () => {
+        video.onloadedmetadata = async () => {
           console.log('[DropVideo] metadata:', { n: file.name, d: video.duration, w: video.videoWidth, h: video.videoHeight })
-          addClip(createClip({ type: 'video', src: url, name: file.name, duration: video.duration, naturalWidth: video.videoWidth || 1920, naturalHeight: video.videoHeight || 1080 }))
+          const clip = createClip({ type: 'video', src: url, name: file.name, duration: video.duration, naturalWidth: video.videoWidth || 1920, naturalHeight: video.videoHeight || 1080 })
+          const persisted = await saveMediaAsset(file, clip.id)
+          addClip({ ...clip, mediaStorageKey: persisted.mediaStorageKey, originalPath: persisted.originalPath })
         }
       } else if (file.type.startsWith('image/')) {
         const img = new Image()
         img.src = url
-        img.onload = () => {
+        img.onload = async () => {
           console.log('[DropImage] loaded:', { n: file.name, w: img.naturalWidth, h: img.naturalHeight })
-          addClip(createClip({ type: 'image', src: url, name: file.name, duration: 5, naturalWidth: img.naturalWidth || 1920, naturalHeight: img.naturalHeight || 1080 }))
+          const clip = createClip({ type: 'image', src: url, name: file.name, duration: 5, naturalWidth: img.naturalWidth || 1920, naturalHeight: img.naturalHeight || 1080 })
+          const persisted = await saveMediaAsset(file, clip.id)
+          addClip({ ...clip, mediaStorageKey: persisted.mediaStorageKey, originalPath: persisted.originalPath })
         }
       }
     }
