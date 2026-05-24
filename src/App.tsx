@@ -11,6 +11,7 @@ import { useEditorStore } from '@/store/editorStore'
 import { loadMediaAssetUrl } from '@/lib/mediaStorage'
 import { clearMediaCache } from '@/lib/canvasRenderer'
 import { ZoomIn, ZoomOut } from 'lucide-react'
+import type { Clip } from '@/types'
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -19,7 +20,7 @@ function App() {
   const { clips, currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding, isPlaying } = useEditorStore()
   const [stageSize, setStageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
   const { togglePlay, seek } = usePlayer(canvasRef)
-  const { exporting, progress: exportProgress, startExport, cancelExport } = useExporter(canvasRef)
+  const { exporting, progress: exportProgress, startExport, cancelExport } = useExporter(canvasRef, stageSize)
 
   const stageRatio = useMemo(() => {
     const [w, h] = stageAspect.split('/').map(Number)
@@ -39,11 +40,16 @@ function App() {
       clearMediaCache()
 
       // Restore clip sources from IndexedDB
-      const restoredClips = await Promise.all(state.clips.map(async (clip) => {
-        if (!clip.mediaStorageKey) return clip
+      const restoredClipsRaw = await Promise.all(state.clips.map(async (clip): Promise<Clip | null> => {
+        if (!clip.mediaStorageKey) {
+          // Stale object URLs from old sessions cannot be restored.
+          if (clip.src.startsWith('blob:')) return null
+          return clip
+        }
         const restoredUrl = await loadMediaAssetUrl(clip.mediaStorageKey)
-        return restoredUrl ? { ...clip, src: restoredUrl } : clip
+        return restoredUrl ? { ...clip, src: restoredUrl } : null
       }))
+      const restoredClips = restoredClipsRaw.filter((clip): clip is Clip => clip !== null)
 
       // Restore background image
       let restoredBg = state.background
@@ -51,7 +57,11 @@ function App() {
         const restoredBgUrl = await loadMediaAssetUrl(state.background.mediaStorageKey)
         if (restoredBgUrl) {
           restoredBg = { ...state.background, src: restoredBgUrl }
+        } else {
+          restoredBg = { type: 'color', value: '#000000' }
         }
+      } else if (state.background.type === 'image' && state.background.src.startsWith('blob:')) {
+        restoredBg = { type: 'color', value: '#000000' }
       }
 
       // Apply all at once — bypasses undo snapshots
@@ -111,7 +121,7 @@ function App() {
   }, [previewZoom, safePreviewZoom, setPreviewZoom])
 
   useEffect(() => {
-    if (!Number.isFinite(devicePadding) || devicePadding < 0 || devicePadding > 80) {
+    if (!Number.isFinite(devicePadding) || devicePadding < 0 || devicePadding > 120) {
       setDevicePadding(40)
     }
   }, [devicePadding, setDevicePadding])
