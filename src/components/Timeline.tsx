@@ -283,19 +283,81 @@ export function Timeline() {
               return (
                 <div
                   key={motion.id}
-                  className={`absolute top-1 rounded-full cursor-pointer group ${
+                  className={`absolute top-1 rounded-full group ${
                     motion.id === selectedZoomMotionId ? 'ring-2 ring-amber-500 ring-offset-1' : ''
                   }`}
                   style={{ left, width, height: 12 }}
-                  onClick={(e) => { e.stopPropagation(); selectZoomMotion(motion.id) }}
-                  title={`Zoom ${motion.peakScale}x — ${motion.duration.toFixed(1)}s`}
                 >
-                  <div className="h-full rounded-full bg-amber-400/60 border border-amber-500/80 flex items-center justify-center text-[8px] text-amber-900 font-mono truncate px-1">
+                  {/* Left resize handle */}
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-amber-600/50 rounded-l-full"
+                    onMouseDown={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.clientX
+                      const origStart = motion.startTime
+                      const origEnd = motion.startTime + motion.duration
+                      const onMove = (ev: MouseEvent) => {
+                        const dx = (ev.clientX - startX) / pixelsPerSecond
+                        const newStart = Math.max(0, origStart + dx)
+                        const newDuration = Math.max(0.3, origEnd - newStart)
+                        updateZoomMotion(motion.id, { startTime: newStart, duration: newDuration })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove)
+                        document.removeEventListener('mouseup', onUp)
+                      }
+                      document.addEventListener('mousemove', onMove)
+                      document.addEventListener('mouseup', onUp)
+                    }}
+                  />
+                  {/* Body — drag to move */}
+                  <div
+                    className="h-full rounded-full bg-amber-400/60 border border-amber-500/80 flex items-center justify-center text-[8px] text-amber-900 font-mono truncate px-1 cursor-grab active:cursor-grabbing mx-2"
+                    onMouseDown={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.clientX
+                      const origStart = motion.startTime
+                      let moved = false
+                      const onMove = (ev: MouseEvent) => {
+                        const dx = (ev.clientX - startX) / pixelsPerSecond
+                        const newStart = Math.max(0, origStart + dx)
+                        if (Math.abs(dx) > 0.05) moved = true
+                        updateZoomMotion(motion.id, { startTime: newStart })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove)
+                        document.removeEventListener('mouseup', onUp)
+                        if (!moved) selectZoomMotion(motion.id)
+                      }
+                      document.addEventListener('mousemove', onMove)
+                      document.addEventListener('mouseup', onUp)
+                    }}
+                  >
                     {motion.peakScale}x
                   </div>
+                  {/* Right resize handle */}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-amber-600/50 rounded-r-full"
+                    onMouseDown={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.clientX
+                      const origDuration = motion.duration
+                      const onMove = (ev: MouseEvent) => {
+                        const dx = (ev.clientX - startX) / pixelsPerSecond
+                        updateZoomMotion(motion.id, { duration: Math.max(0.3, origDuration + dx) })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove)
+                        document.removeEventListener('mouseup', onUp)
+                      }
+                      document.addEventListener('mousemove', onMove)
+                      document.addEventListener('mouseup', onUp)
+                    }}
+                  />
+                  {/* Delete button */}
                   <button
                     onClick={(e) => { e.stopPropagation(); removeZoomMotion(motion.id); selectZoomMotion(null) }}
-                    className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[8px] hidden group-hover:flex items-center justify-center cursor-pointer"
+                    className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[8px] hidden group-hover:flex items-center justify-center cursor-pointer z-10"
                   >
                     ×
                   </button>
