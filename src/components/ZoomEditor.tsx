@@ -73,36 +73,6 @@ export function ZoomEditor() {
           onValueChange={([v]) => updateZoomMotion(motion.id, { peakScale: v ?? motion.peakScale })} />
       </div>
 
-      <div>
-        <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
-          <span>Start Time</span>
-          <span className="font-mono">{motion.startTime.toFixed(1)}s</span>
-        </div>
-        <Slider min={0} max={Math.max(30, motion.startTime + 10)} step={0.1} value={[motion.startTime]}
-          onValueChange={([v]) => updateZoomMotion(motion.id, { startTime: v ?? motion.startTime })} />
-      </div>
-
-      <div>
-        <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
-          <span>Target X</span>
-          <span className="font-mono">{(motion.targetX * 100).toFixed(0)}%</span>
-        </div>
-        <Slider min={0} max={1} step={0.01} value={[motion.targetX]}
-          onValueChange={([v]) => updateZoomMotion(motion.id, { targetX: v ?? motion.targetX })} />
-      </div>
-
-      <div>
-        <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
-          <span>Target Y</span>
-          <span className="font-mono">{(motion.targetY * 100).toFixed(0)}%</span>
-        </div>
-        <Slider min={0} max={1} step={0.01} value={[motion.targetY]}
-          onValueChange={([v]) => updateZoomMotion(motion.id, { targetY: v ?? motion.targetY })} />
-      </div>
-
-      <p className="text-[10px] text-gray-400 leading-tight">
-        Drag the box on the preview to position the zoom target.
-      </p>
     </div>
   )
 }
