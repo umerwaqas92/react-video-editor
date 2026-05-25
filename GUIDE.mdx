@@ -1,0 +1,158 @@
+---
+title: React Video Editor — Full Guide
+description: Complete documentation for the browser-based video editor
+---
+
+# React Video Editor
+
+A **browser-based video editor** built with React 19, TypeScript, and Canvas API. No server required — everything runs client-side.
+
+## Quick Start
+
+```bash
+npm install
+npm run dev        # Start dev server at localhost:5173
+npm run build      # Production build → dist/
+npm run preview    # Preview production build
+```
+
+## How It Works
+
+### Add Media
+
+- **Drag & drop** video or image files onto the phone mockup
+- **Tap** the empty screen (mobile) to open a file picker
+- Each file becomes a **separate clip** on the timeline
+
+### Timeline
+
+The timeline at the bottom shows all your clips:
+
+- **Colored bars**: Purple = video, Emerald = image
+- **Click** a clip to select it
+- **Drag** clips to reorder
+- **Scrub** the playhead (top triangle) to seek
+- **Click on the track** to jump the playhead
+
+**Toolbar** (two rows above the track):
+
+| Row | Controls |
+|-----|----------|
+| 1 | Undo / Redo / Zoom slider / Skip -1s +1s / Go to start-end / Play-Pause / Time display |
+| 2 | Speed 1x 2x 3x / Split / Add Zoom / Recalculate / **Fit All** |
+
+- **Fit All** button auto-zooms the timeline to show every clip
+- **Split** cuts the current clip at the playhead position
+- **Recalculate** closes any gaps between clips
+
+### Trim & Speed (Desktop)
+
+1. Select a clip → a **"Trim & Speed"** button appears in the sidebar
+2. Click it to open the card
+3. Adjust **speed** with preset buttons (0.25x–4x)
+4. The card shows clip **name** and **duration**
+
+### Zoom Motion (Ken Burns Effect)
+
+Add zoom-in/out effects to any point in your video:
+
+1. Click the **Add Zoom** button (amber icon) in the timeline toolbar
+2. A yellow bar appears on the **zoom track** below the clips
+3. Select the zoom motion bar → a **"Zoom Motion"** button appears in the sidebar
+4. Click it to open the card and adjust **Duration** and **Zoom Level**
+
+**On the preview**: A draggable **dashed box** shows where the zoom focuses. Drag it to set the target area.
+
+Each zoom motion follows a smooth in→hold→out curve (0.2s zoom in, hold at peak, 0.2s zoom out).
+
+### Background
+
+- **Color presets**: Click any color swatch
+- **Image presets**: Click a preset thumbnail (from public/)
+- **Custom upload**: Click "Upload Image"
+- **Padding**: Adjust the phone frame padding
+- **Player Ratio**: 16/9, 9/16, 1/1, 4/5, 21/9
+
+### Duplicate
+
+- **Clip**: Select a clip → click the **Copy** icon in the Trim card → duplicates right after the original
+- **Zoom Motion**: Select a zoom motion → click the **Copy** icon → duplicates 0.5s after the original
+
+### Export
+
+Click the **Export** button in the header:
+
+- Renders the full composition at 1920px long edge, 30fps
+- Bakes in the phone frame, background, clip motions, and zoom effects
+- Downloads as MP4 (H.264 via MediaRecorder)
+
+**Note**: Export uses `captureStream()` + `MediaRecorder`. Safari has limited MP4 support — Chrome/Edge/Firefox recommended.
+
+### Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Space` | Play / Pause |
+| `Delete / Backspace` | Remove selected clip or zoom motion |
+| `←` / `→` | Step frame backward / forward |
+| `Home` | Go to start |
+| `End` | Go to end |
+
+### Undo / Redo
+
+- **Undo** / **Redo** buttons in the timeline toolbar
+- Supports up to 50 history steps
+- Persisted across page reloads
+
+## Architecture
+
+```
+src/
+├── App.tsx                  # Main layout, stage sizing, keyboard shortcuts
+├── main.tsx                 # Entry point
+├── types/index.ts           # TypeScript types (Clip, ZoomMotion, etc.)
+├── store/editorStore.ts     # Zustand store with undo/redo + localStorage persist
+├── components/
+│   ├── Timeline.tsx         # Clip bars, ruler, playhead, transport controls
+│   ├── PhoneMockup.tsx      # Drop zone, canvas host, zoom target dragger
+│   ├── TrimEditor.tsx       # Speed presets, clip motion sliders
+│   ├── ZoomEditor.tsx       # Zoom motion duration/level sliders
+│   ├── BackgroundPicker.tsx # Color/image presets, padding, aspect ratio
+│   ├── Header.tsx           # Export button + progress
+│   └── ui/                  # Button, Slider primitives
+├── hooks/
+│   ├── usePlayer.ts         # RAF-based playback loop
+│   └── useExporter.ts       # Canvas → MediaRecorder → MP4
+└── lib/
+    ├── canvasRenderer.ts    # drawFrame, video sync, image preloading
+    └── mediaStorage.ts      # IndexedDB persistence for uploaded files
+```
+
+### Data Flow
+
+1. **User drops a file** → `PhoneMockup.handleDrop` creates an object URL + saves to IndexedDB → `addClip` to Zustand store
+2. **Playback** → `usePlayer` runs a `requestAnimationFrame` loop → advances `currentTime` → `drawFrame` renders to canvas
+3. **Export** → `useExporter` reads current state, creates an offscreen canvas, records frames via `captureStream()`, saves as MP4
+4. **Persistence** → Zustand `persist` middleware saves state to localStorage (clip metadata, not the raw media — that's in IndexedDB)
+
+### Key Concepts
+
+- **Clip Motion**: Per-clip zoom+slide animation (start/end scale, anchor point, slide X/Y)
+- **Zoom Motion**: Multi-point zoom keyframes overlaid on the entire composition (in→hold→out curve)
+- **Stage**: The outer canvas area with background and device padding
+- **Phone Mockup**: Renders the stage inside a phone frame with notch
+
+## Tech Stack
+
+| Technology | Purpose |
+|------------|---------|
+| React 19 | UI framework |
+| TypeScript 6 | Type safety |
+| Vite 8 | Build tool |
+| Zustand 5 | State management with undo/redo |
+| Tailwind CSS 4 | Styling |
+| Canvas API | Video composition and rendering |
+| MediaRecorder + captureStream() | Export to MP4 |
+| IndexedDB | Media file storage |
+| @dnd-kit | Drag and drop (installed but used minimally) |
+| lucide-react | Icons |
