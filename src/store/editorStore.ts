@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Clip, ZoomMotion } from '@/types'
+import type { Clip, ZoomMotion, FocusEffect } from '@/types'
 import { deleteMediaAsset } from '@/lib/mediaStorage'
 
 export type Background =
@@ -10,8 +10,10 @@ export type Background =
 interface EditorStore {
   clips: Clip[]
   zoomMotions: ZoomMotion[]
+  focusEffects: FocusEffect[]
   selectedClipId: string | null
   selectedZoomMotionId: string | null
+  selectedFocusEffectId: string | null
   background: Background
   devicePadding: number
   previewZoom: number
@@ -24,6 +26,7 @@ interface EditorStore {
   isPlaying: boolean
 
   addClip: (clip: Clip) => void
+  addClips: (clips: Clip[]) => void
   duplicateClip: (id: string) => void
   removeClip: (id: string) => void
   updateClip: (id: string, updates: Partial<Clip>) => void
@@ -50,6 +53,12 @@ interface EditorStore {
   removeZoomMotion: (id: string) => void
   updateZoomMotion: (id: string, updates: Partial<ZoomMotion>) => void
   selectZoomMotion: (id: string | null) => void
+
+  addFocusEffect: (effect: FocusEffect) => void
+  duplicateFocusEffect: (id: string) => void
+  removeFocusEffect: (id: string) => void
+  updateFocusEffect: (id: string, updates: Partial<FocusEffect>) => void
+  selectFocusEffect: (id: string | null) => void
 
   undo: () => void
   redo: () => void
@@ -78,10 +87,27 @@ export function createZoomMotion(overrides?: Partial<ZoomMotion>): ZoomMotion {
   }
 }
 
+export function createFocusEffect(overrides?: Partial<FocusEffect>): FocusEffect {
+  return {
+    id: `focus_${Date.now()}_${++idCounter}`,
+    startTime: 0,
+    duration: 5,
+    type: 'blur',
+    shape: 'circle',
+    centerX: 0.5,
+    centerY: 0.5,
+    radiusX: 0.15,
+    radiusY: 0.15,
+    intensity: 15,
+    ...overrides,
+  }
+}
+
 function takeSnapshot(state: EditorStore): string {
   return JSON.stringify({
     clips: state.clips,
     zoomMotions: state.zoomMotions,
+    focusEffects: state.focusEffects,
     background: state.background,
     devicePadding: state.devicePadding,
     stageAspect: state.stageAspect,
@@ -109,8 +135,10 @@ export function createClip(overrides: Partial<Clip> & { type: 'video' | 'image';
 export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   clips: [],
   zoomMotions: [],
+  focusEffects: [],
   selectedClipId: null,
   selectedZoomMotionId: null,
+  selectedFocusEffectId: null,
   background: { type: 'image', src: encodeURI('/_.jpeg') },
   devicePadding: 40,
   previewZoom: 1,
@@ -166,6 +194,19 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     const lastClip = state.clips[state.clips.length - 1]
     const startTime = lastClip ? lastClip.startTime + get().getEffectiveDuration(lastClip) : 0
     set({ clips: [...state.clips, { ...clip, startTime }] })
+  },
+
+  addClips: (newClips) => {
+    if (newClips.length === 0) return
+    get()._pushSnapshot()
+    const state = get()
+    const updatedClips = [...state.clips]
+    for (const clip of newClips) {
+      const lastClip = updatedClips[updatedClips.length - 1]
+      const startTime = lastClip ? lastClip.startTime + get().getEffectiveDuration(lastClip) : 0
+      updatedClips.push({ ...clip, startTime })
+    }
+    set({ clips: updatedClips })
   },
 
   duplicateClip: (id) => {
@@ -360,7 +401,42 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     }))
   },
 
-  selectZoomMotion: (id) => set({ selectedZoomMotionId: id, selectedClipId: null }),
+  selectZoomMotion: (id) => set({ selectedZoomMotionId: id, selectedClipId: null, selectedFocusEffectId: null }),
+
+  addFocusEffect: (effect) => {
+    get()._pushSnapshot()
+    set(state => ({ focusEffects: [...state.focusEffects, effect] }))
+  },
+
+  duplicateFocusEffect: (id) => {
+    get()._pushSnapshot()
+    const state = get()
+    const original = state.focusEffects.find(f => f.id === id)
+    if (!original) return
+    const duplicate: FocusEffect = {
+      ...original,
+      id: `focus_${Date.now()}_${++idCounter}`,
+      startTime: original.startTime + original.duration + 0.5,
+    }
+    set({ focusEffects: [...state.focusEffects, duplicate], selectedFocusEffectId: duplicate.id, selectedClipId: null, selectedZoomMotionId: null })
+  },
+
+  removeFocusEffect: (id) => {
+    get()._pushSnapshot()
+    set(state => ({
+      focusEffects: state.focusEffects.filter(f => f.id !== id),
+      selectedFocusEffectId: state.selectedFocusEffectId === id ? null : state.selectedFocusEffectId,
+    }))
+  },
+
+  updateFocusEffect: (id, updates) => {
+    get()._pushSnapshot()
+    set(state => ({
+      focusEffects: state.focusEffects.map(f => f.id === id ? { ...f, ...updates } : f),
+    }))
+  },
+
+  selectFocusEffect: (id) => set({ selectedFocusEffectId: id, selectedClipId: null, selectedZoomMotionId: null }),
 
   resetAll: () => {
     // Clear IndexedDB
@@ -373,8 +449,10 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     set({
       clips: [],
       zoomMotions: [],
+      focusEffects: [],
       selectedClipId: null,
       selectedZoomMotionId: null,
+      selectedFocusEffectId: null,
       background: { type: 'image', src: encodeURI('/_.jpeg') },
       devicePadding: 40,
       previewZoom: 1,
@@ -395,8 +473,10 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   partialize: (state) => ({
     clips: state.clips,
     zoomMotions: state.zoomMotions,
+    focusEffects: state.focusEffects,
     selectedClipId: state.selectedClipId,
     selectedZoomMotionId: state.selectedZoomMotionId,
+    selectedFocusEffectId: state.selectedFocusEffectId,
     background: state.background,
     devicePadding: state.devicePadding,
     previewZoom: state.previewZoom,

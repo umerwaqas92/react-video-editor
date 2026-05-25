@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useEditorStore, createZoomMotion } from '@/store/editorStore'
+import { useEditorStore, createZoomMotion, createFocusEffect } from '@/store/editorStore'
 import type { Clip } from '@/types'
-import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors, Play, Pause, Undo, Redo, AlignStartHorizontal, Maximize } from 'lucide-react'
+import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors, Play, Pause, Undo, Redo, AlignStartHorizontal, Maximize, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { seekAllVideos } from '@/lib/canvasRenderer'
 
@@ -16,7 +16,7 @@ function getInterval(pps: number): number {
 }
 
 export function Timeline() {
-  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion, isPlaying, playbackRate, setPlaybackRate, undo, redo, canUndo, canRedo, recalculateTimeline } = useEditorStore()
+  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion, isPlaying, playbackRate, setPlaybackRate, undo, redo, canUndo, canRedo, recalculateTimeline, focusEffects, addFocusEffect, updateFocusEffect, selectedFocusEffectId, selectFocusEffect } = useEditorStore()
   const dragRef = useRef<{ clipId: string; fromIndex: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const seekRafRef = useRef<number | null>(null)
@@ -289,6 +289,16 @@ export function Timeline() {
             variant="ghost"
             size="icon"
             className="h-6 w-6"
+            onClick={() => addFocusEffect(createFocusEffect({ startTime: currentTime }))}
+            title="Add focus/blur area"
+          >
+            <Eye className="w-3.5 h-3.5 text-indigo-500" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
             onClick={recalculateTimeline}
             title="Recalculate timeline (close gaps)"
           >
@@ -541,6 +551,175 @@ export function Timeline() {
                         const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
                         const dx = (clientX - startX) / pixelsPerSecond
                         updateZoomMotion(motion.id, { duration: Math.max(0.3, origDuration + dx) })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Focus effect track */}
+        <div className="mt-1 border-t border-gray-100" style={{ minWidth: totalWidth + 50 }}>
+          <div className="relative" style={{ minHeight: 20 }}>
+            {focusEffects && focusEffects.map(effect => {
+              const left = effect.startTime * pixelsPerSecond
+              const width = Math.max(effect.duration * pixelsPerSecond, 40)
+              const label = effect.type === 'blur' ? 'Blur' : 'Magnify'
+              return (
+                <div
+                  key={effect.id}
+                  className={`absolute top-1 rounded-full group ${
+                    effect.id === selectedFocusEffectId ? 'ring-2 ring-indigo-500 ring-offset-1' : ''
+                  }`}
+                  style={{ left, width, height: 12 }}
+                >
+                  {/* Left resize handle */}
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-indigo-600/50 rounded-l-full"
+                    onMouseDown={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.clientX
+                      const origStart = effect.startTime
+                      const origEnd = effect.startTime + effect.duration
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        const newStart = Math.max(0, origStart + dx)
+                        const newDuration = Math.max(0.3, origEnd - newStart)
+                        updateFocusEffect(effect.id, { startTime: newStart, duration: newDuration })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.touches[0].clientX
+                      const origStart = effect.startTime
+                      const origEnd = effect.startTime + effect.duration
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        const newStart = Math.max(0, origStart + dx)
+                        const newDuration = Math.max(0.3, origEnd - newStart)
+                        updateFocusEffect(effect.id, { startTime: newStart, duration: newDuration })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                  />
+                  {/* Body — drag to move */}
+                  <div
+                    className="h-full rounded-full bg-indigo-400/60 border border-indigo-500/80 flex items-center justify-center text-[8px] text-indigo-900 font-mono truncate px-1 cursor-grab active:cursor-grabbing mx-2"
+                    onMouseDown={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.clientX
+                      const origStart = effect.startTime
+                      let moved = false
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        const newStart = Math.max(0, origStart + dx)
+                        if (Math.abs(dx) > 0.05) moved = true
+                        updateFocusEffect(effect.id, { startTime: newStart })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                        if (!moved) selectFocusEffect(effect.id)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.touches[0].clientX
+                      const origStart = effect.startTime
+                      let moved = false
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        const newStart = Math.max(0, origStart + dx)
+                        if (Math.abs(dx) > 0.05) moved = true
+                        updateFocusEffect(effect.id, { startTime: newStart })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                        if (!moved) selectFocusEffect(effect.id)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                  >
+                    {label}
+                  </div>
+                  {/* Right resize handle */}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-indigo-600/50 rounded-r-full"
+                    onMouseDown={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.clientX
+                      const origDuration = effect.duration
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        updateFocusEffect(effect.id, { duration: Math.max(0.3, origDuration + dx) })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.touches[0].clientX
+                      const origDuration = effect.duration
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        updateFocusEffect(effect.id, { duration: Math.max(0.3, origDuration + dx) })
                       }
                       const onUp = () => {
                         document.removeEventListener('mousemove', onMove as EventListener)

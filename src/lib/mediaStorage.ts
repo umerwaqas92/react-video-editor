@@ -1,3 +1,5 @@
+import { createManagedBlobUrl } from '@/lib/blobRegistry'
+
 const DB_NAME = 'react-video-editor-media'
 const DB_VERSION = 1
 const STORE_NAME = 'assets'
@@ -60,7 +62,7 @@ export async function loadMediaAssetUrl(id: string): Promise<string | null> {
   const record = await runRequest<MediaAssetRecord | undefined>(store.get(id))
   db.close()
   if (!record) return null
-  return URL.createObjectURL(record.blob)
+  return createManagedBlobUrl(record.blob)
 }
 
 export async function deleteMediaAsset(id: string): Promise<void> {

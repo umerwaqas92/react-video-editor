@@ -13,7 +13,7 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
   const sizedRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [phoneWidth, setPhoneWidth] = useState(260)
-  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect, zoomMotions, selectedZoomMotionId, updateZoomMotion } = useEditorStore()
+  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect, zoomMotions, selectedZoomMotionId, updateZoomMotion, focusEffects, selectedFocusEffectId, updateFocusEffect } = useEditorStore()
 
   useEffect(() => {
     preloadAssets(clips, background)
@@ -364,6 +364,100 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
                     {/* Zoom label */}
                     <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[9px] px-1.5 py-px rounded-full font-mono whitespace-nowrap">
                       {zm.peakScale}x
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Draggable Focus effect box — shown when focus effect is selected */}
+              {selectedFocusEffectId && (() => {
+                const fe = focusEffects.find(f => f.id === selectedFocusEffectId)
+                if (!fe) return null
+                const boxW = (fe.radiusX * 2 * 100) + '%'
+                const boxH = (fe.radiusY * 2 * 100) + '%'
+                const left = ((fe.centerX - fe.radiusX) * 100) + '%'
+                const top = ((fe.centerY - fe.radiusY) * 100) + '%'
+
+                const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  const screenEl = containerRef.current
+                  if (!screenEl) return
+                  const rect = screenEl.getBoundingClientRect()
+
+                  const onMove = (ev: MouseEvent | TouchEvent) => {
+                    const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                    const clientY = 'touches' in ev ? ev.touches[0].clientY : ev.clientY
+                    const nx = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+                    const ny = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
+                    updateFocusEffect(fe.id, { centerX: nx, centerY: ny })
+                  }
+                  const onUp = () => {
+                    document.removeEventListener('mousemove', onMove)
+                    document.removeEventListener('mouseup', onUp)
+                    document.removeEventListener('touchmove', onMove)
+                    document.removeEventListener('touchend', onUp)
+                  }
+                  document.addEventListener('mousemove', onMove)
+                  document.addEventListener('mouseup', onUp)
+                  document.addEventListener('touchmove', onMove)
+                  document.addEventListener('touchend', onUp)
+                }
+
+                const handleResizeStart = (e: React.MouseEvent | React.TouchEvent) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  const screenEl = containerRef.current
+                  if (!screenEl) return
+                  const rect = screenEl.getBoundingClientRect()
+
+                  const onMove = (ev: MouseEvent | TouchEvent) => {
+                    const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                    const clientY = 'touches' in ev ? ev.touches[0].clientY : ev.clientY
+                    const currentX = (clientX - rect.left) / rect.width
+                    const currentY = (clientY - rect.top) / rect.height
+                    
+                    const rx = Math.max(0.02, Math.min(0.48, Math.abs(currentX - fe.centerX)))
+                    const ry = Math.max(0.02, Math.min(0.48, Math.abs(currentY - fe.centerY)))
+                    updateFocusEffect(fe.id, { radiusX: rx, radiusY: ry })
+                  }
+                  const onUp = () => {
+                    document.removeEventListener('mousemove', onMove)
+                    document.removeEventListener('mouseup', onUp)
+                    document.removeEventListener('touchmove', onMove)
+                    document.removeEventListener('touchend', onUp)
+                  }
+                  document.addEventListener('mousemove', onMove)
+                  document.addEventListener('mouseup', onUp)
+                  document.addEventListener('touchmove', onMove)
+                  document.addEventListener('touchend', onUp)
+                }
+
+                return (
+                  <div
+                    className={`absolute border-2 border-indigo-500 border-dashed bg-indigo-500/10 cursor-move z-20 ${
+                      fe.shape === 'circle' ? 'rounded-full' : 'rounded-lg'
+                    }`}
+                    style={{ left, top, width: boxW, height: boxH }}
+                    onMouseDown={handleDragStart}
+                    onTouchStart={handleDragStart}
+                  >
+                    {/* Center dot */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-indigo-500 rounded-full" />
+                    
+                    {/* Resize handle (bottom-right corner) */}
+                    <div
+                      className="absolute right-0 bottom-0 w-4 h-4 cursor-se-resize bg-indigo-500 border-l border-t border-white flex items-center justify-center rounded-tl-sm rounded-br-sm shadow"
+                      onMouseDown={handleResizeStart}
+                      onTouchStart={handleResizeStart}
+                      style={{ transform: 'translate(4px, 4px)' }}
+                    >
+                      <div className="w-1.5 h-1.5 border-r border-b border-white rotate-45" />
+                    </div>
+
+                    {/* Effect type label */}
+                    <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[9px] px-1.5 py-px rounded-full font-mono whitespace-nowrap">
+                      {fe.type === 'blur' ? 'Privacy Blur' : `Magnify (${fe.intensity}x)`}
                     </div>
                   </div>
                 )

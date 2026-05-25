@@ -1,5 +1,5 @@
 import type { Clip } from '@/types'
-import type { Background } from '@/store/editorStore'
+import { useEditorStore, type Background } from '@/store/editorStore'
 
 const videoCache = new Map<string, HTMLVideoElement>()
 const imageCache = new Map<string, HTMLImageElement>()
@@ -224,5 +224,70 @@ export function drawFrame(
         ctx.drawImage(img, (cssW - sw) / 2, (cssH - sh) / 2, sw, sh)
       }
     }
+  }
+
+  // Draw each active focus effect (blur or magnify)
+  try {
+    const state = useEditorStore.getState()
+    const activeEffects = state.focusEffects || []
+    
+    for (const effect of activeEffects) {
+      if (currentTime < effect.startTime || currentTime > effect.startTime + effect.duration) continue
+      
+      const cx = effect.centerX * cssW
+      const cy = effect.centerY * cssH
+      const rx = effect.radiusX * cssW
+      const ry = effect.radiusY * cssH
+      
+      ctx.save()
+      
+      // Define clipping path
+      ctx.beginPath()
+      if (effect.shape === 'circle') {
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2)
+      } else {
+        ctx.rect(cx - rx, cy - ry, rx * 2, ry * 2)
+      }
+      ctx.clip()
+      
+      if (effect.type === 'blur') {
+        // Blur effect: copy current canvas frame and draw it back blurred
+        ctx.filter = `blur(${effect.intensity}px)`
+        ctx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, cssW, cssH)
+      } else if (effect.type === 'magnify') {
+        // Magnify effect: zoom in on what's under the region
+        const scaleLevel = effect.intensity || 1.5
+        const srcW = (rx * 2) / scaleLevel
+        const srcH = (ry * 2) / scaleLevel
+        const srcX = cx - srcW / 2
+        const srcY = cy - srcH / 2
+        
+        ctx.drawImage(
+          canvas,
+          srcX * dpr, srcY * dpr, srcW * dpr, srcH * dpr,
+          cx - rx, cy - ry, rx * 2, ry * 2
+        )
+      }
+      
+      ctx.restore()
+      
+      // Draw a subtle border around the focus area (dotted for blur, solid for magnify) ONLY if selected
+      if (state.selectedFocusEffectId === effect.id) {
+        ctx.save()
+        ctx.strokeStyle = effect.type === 'magnify' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.4)'
+        ctx.lineWidth = 1.5
+        ctx.setLineDash(effect.type === 'blur' ? [4, 4] : [])
+        ctx.beginPath()
+        if (effect.shape === 'circle') {
+          ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2)
+        } else {
+          ctx.rect(cx - rx, cy - ry, rx * 2, ry * 2)
+        }
+        ctx.stroke()
+        ctx.restore()
+      }
+    }
+  } catch (err) {
+    console.error('[drawFrame] error drawing focus effects:', err)
   }
 }

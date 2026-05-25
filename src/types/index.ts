@@ -44,3 +44,17 @@ export interface EditorState {
   currentTime: number
   isPlaying: boolean
 }
+
+export interface FocusEffect {
+  id: string
+  startTime: number
+  duration: number
+  type: 'blur' | 'magnify'
+  shape: 'circle' | 'rect'
+  centerX: number
+  centerY: number
+  radiusX: number
+  radiusY: number
+  intensity: number
+}
+

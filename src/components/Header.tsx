@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { useEditorStore, createClip } from '@/store/editorStore'
 import { Plus, ImageIcon, RotateCcw, Download, X } from 'lucide-react'
 import { saveMediaAsset } from '@/lib/mediaStorage'
+import { createManagedBlobUrl } from '@/lib/blobRegistry'
 
 export function Header({ exporting, exportProgress, onExport, onCancelExport }: {
   exporting?: boolean
@@ -12,59 +13,98 @@ export function Header({ exporting, exportProgress, onExport, onCancelExport }: 
 }) {
   const videoInputRef = useRef<HTMLInputElement>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
-  const { addClip, playbackRate, setPlaybackRate, resetAll } = useEditorStore()
+  const { addClips, playbackRate, setPlaybackRate, resetAll } = useEditorStore()
 
   const handleVideoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const url = URL.createObjectURL(file)
-    const video = document.createElement('video')
-    video.src = url
-    video.onloadedmetadata = async () => {
-      console.log('[AddVideo] metadata:', { n: file.name, d: video.duration, w: video.videoWidth, h: video.videoHeight })
-      const clip = createClip({
-        type: 'video',
-        src: url,
-        name: file.name,
-        duration: video.duration,
-        naturalWidth: video.videoWidth || 1920,
-        naturalHeight: video.videoHeight || 1080,
-      })
-      const persisted = await saveMediaAsset(file, clip.id)
-      addClip({
-        ...clip,
-        mediaStorageKey: persisted.mediaStorageKey,
-        originalPath: persisted.originalPath,
-      })
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    const fileList = Array.from(files)
+
+    const processVideos = async () => {
+      const newClips = await Promise.all(
+        fileList.map(async (file) => {
+          const meta = await new Promise<{ duration: number; width: number; height: number; url: string }>((resolve) => {
+            const url = createManagedBlobUrl(file)
+            const video = document.createElement('video')
+            video.src = url
+            video.onloadedmetadata = () => {
+              resolve({
+                duration: video.duration,
+                width: video.videoWidth || 1920,
+                height: video.videoHeight || 1080,
+                url,
+              })
+            }
+          })
+
+          const clip = createClip({
+            type: 'video',
+            src: meta.url,
+            name: file.name,
+            duration: meta.duration,
+            naturalWidth: meta.width,
+            naturalHeight: meta.height,
+          })
+
+          const persisted = await saveMediaAsset(file, clip.id)
+          return {
+            ...clip,
+            mediaStorageKey: persisted.mediaStorageKey,
+            originalPath: persisted.originalPath,
+          }
+        })
+      )
+      addClips(newClips)
     }
+
+    void processVideos()
     e.target.value = ''
-  }, [addClip])
+  }, [addClips])
 
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const url = URL.createObjectURL(file)
-    const img = new Image()
-    img.src = url
-    img.onload = async () => {
-      console.log('[AddImage] loaded:', { n: file.name, w: img.naturalWidth, h: img.naturalHeight })
-      const clip = createClip({
-        type: 'image',
-        src: url,
-        name: file.name,
-        duration: 5,
-        naturalWidth: img.naturalWidth || 1920,
-        naturalHeight: img.naturalHeight || 1080,
-      })
-      const persisted = await saveMediaAsset(file, clip.id)
-      addClip({
-        ...clip,
-        mediaStorageKey: persisted.mediaStorageKey,
-        originalPath: persisted.originalPath,
-      })
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    const fileList = Array.from(files)
+
+    const processImages = async () => {
+      const newClips = await Promise.all(
+        fileList.map(async (file) => {
+          const meta = await new Promise<{ width: number; height: number; url: string }>((resolve) => {
+            const url = createManagedBlobUrl(file)
+            const img = new Image()
+            img.src = url
+            img.onload = () => {
+              resolve({
+                width: img.naturalWidth || 1920,
+                height: img.naturalHeight || 1080,
+                url,
+              })
+            }
+          })
+
+          const clip = createClip({
+            type: 'image',
+            src: meta.url,
+            name: file.name,
+            duration: 5,
+            naturalWidth: meta.width,
+            naturalHeight: meta.height,
+          })
+
+          const persisted = await saveMediaAsset(file, clip.id)
+          return {
+            ...clip,
+            mediaStorageKey: persisted.mediaStorageKey,
+            originalPath: persisted.originalPath,
+          }
+        })
+      )
+      addClips(newClips)
     }
+
+    void processImages()
     e.target.value = ''
-  }, [addClip])
+  }, [addClips])
 
   return (
     <header className="flex items-center justify-between px-3 md:px-4 py-2 bg-white border-b border-gray-200 gap-1">
@@ -77,13 +117,13 @@ export function Header({ exporting, exportProgress, onExport, onCancelExport }: 
           <Plus className="w-4 h-4" />
           <span className="hidden md:inline">Add Video</span>
         </Button>
-        <input ref={videoInputRef} type="file" accept="video/*" className="hidden" onChange={handleVideoSelect} />
+        <input ref={videoInputRef} type="file" accept="video/*" multiple className="hidden" onChange={handleVideoSelect} />
 
         <Button variant="ghost" size="sm" onClick={() => imageInputRef.current?.click()} title="Add Image">
           <ImageIcon className="w-4 h-4" />
           <span className="hidden md:inline">Add Image</span>
         </Button>
-        <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+        <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageSelect} />
 
         <div className="w-px h-6 bg-gray-200 mx-0.5 md:mx-1 hidden md:block" />
 

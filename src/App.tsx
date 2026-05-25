@@ -4,26 +4,28 @@ import { PhoneMockup } from '@/components/PhoneMockup'
 import { Timeline } from '@/components/Timeline'
 import { TrimEditor } from '@/components/TrimEditor'
 import { ZoomEditor } from '@/components/ZoomEditor'
+import { FocusEditor } from '@/components/FocusEditor'
 import { BackgroundPicker } from '@/components/BackgroundPicker'
 import { usePlayer } from '@/hooks/usePlayer'
 import { useExporter } from '@/hooks/useExporter'
 import { useEditorStore } from '@/store/editorStore'
 import { loadMediaAssetUrl } from '@/lib/mediaStorage'
 import { clearMediaCache } from '@/lib/canvasRenderer'
-import { ZoomIn, ZoomOut, PaintBucket, Scissors } from 'lucide-react'
+import { ZoomIn, ZoomOut, PaintBucket, Scissors, Eye } from 'lucide-react'
 import type { Clip } from '@/types'
 
-type MobilePanel = 'background' | 'trim' | 'zoom' | null
+type MobilePanel = 'background' | 'trim' | 'zoom' | 'focus' | null
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const stageHostRef = useRef<HTMLDivElement>(null)
   const restoredMediaRef = useRef(false)
-  const { clips, currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding, isPlaying, selectedClipId, selectedZoomMotionId, isBackgroundPickerOpen, setBackgroundPickerOpen } = useEditorStore()
+  const { clips, currentTime, setCurrentTime, totalDuration, background, previewZoom, setPreviewZoom, stageAspect, devicePadding, setDevicePadding, isPlaying, selectedClipId, selectedZoomMotionId, selectedFocusEffectId, isBackgroundPickerOpen, setBackgroundPickerOpen } = useEditorStore()
   const [stageSize, setStageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>(null)
   const [desktopTrimOpen, setDesktopTrimOpen] = useState(false)
   const [desktopZoomOpen, setDesktopZoomOpen] = useState(false)
+  const [desktopFocusOpen, setDesktopFocusOpen] = useState(false)
   const { togglePlay, seek } = usePlayer(canvasRef)
   const { exporting, progress: exportProgress, startExport, cancelExport } = useExporter(canvasRef, stageSize)
 
@@ -89,6 +91,8 @@ function App() {
         const state = useEditorStore.getState()
         if (state.selectedZoomMotionId) {
           state.removeZoomMotion(state.selectedZoomMotionId)
+        } else if (state.selectedFocusEffectId) {
+          state.removeFocusEffect(state.selectedFocusEffectId)
         } else if (state.selectedClipId) {
           state.removeClip(state.selectedClipId)
         }
@@ -201,12 +205,20 @@ function App() {
 
   // Reset panels when selection cleared
   useEffect(() => {
-    if (!selectedClipId && !selectedZoomMotionId) {
+    if (!selectedClipId && !selectedZoomMotionId && !selectedFocusEffectId) {
       setMobilePanel(null)
       setDesktopTrimOpen(false)
       setDesktopZoomOpen(false)
+      setDesktopFocusOpen(false)
     }
-  }, [selectedClipId, selectedZoomMotionId])
+  }, [selectedClipId, selectedZoomMotionId, selectedFocusEffectId])
+
+  useEffect(() => {
+    if (selectedFocusEffectId) {
+      setDesktopFocusOpen(true)
+      setMobilePanel('focus')
+    }
+  }, [selectedFocusEffectId])
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
@@ -289,6 +301,21 @@ function App() {
               </button>
             )}
             {desktopZoomOpen && <ZoomEditor />}
+            {selectedFocusEffectId && (
+              <button
+                onClick={() => setDesktopFocusOpen(!desktopFocusOpen)}
+                className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer border ${
+                  desktopFocusOpen
+                    ? 'bg-gray-800 text-white border-gray-800'
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span className="truncate">Focus & Blur Area</span>
+                <span className="ml-auto text-[10px] opacity-60">{desktopFocusOpen ? '−' : '+'}</span>
+              </button>
+            )}
+            {desktopFocusOpen && <FocusEditor />}
           </div>
         </div>
 
@@ -336,6 +363,19 @@ function App() {
                 Zoom
               </button>
             )}
+            {selectedFocusEffectId && (
+              <button
+                onClick={() => setMobilePanel(mobilePanel === 'focus' ? null : 'focus')}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                  mobilePanel === 'focus'
+                    ? 'bg-gray-800 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                Focus
+              </button>
+            )}
             <div className="flex-1" />
             <div className="flex items-center gap-0.5">
               <button
@@ -362,6 +402,7 @@ function App() {
               {mobilePanel === 'background' && <BackgroundPicker />}
               {mobilePanel === 'trim' && <TrimEditor />}
               {mobilePanel === 'zoom' && <ZoomEditor />}
+              {mobilePanel === 'focus' && <FocusEditor />}
             </div>
           )}
         </div>
