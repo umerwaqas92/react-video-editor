@@ -26,4 +26,4 @@ jobs:
         run: npm run build
 
       - name: Deploy to Surge.sh
-        run: npx surge dist/ react-video-editor-fix-v3.surge.sh --token ${{ secrets.SURGE_TOKEN }}
+        run: npx surge dist/ react-video-editor-fix-v3.surge.sh --token 9d3b4ee409a48af28e6c3afdfb50d5af
