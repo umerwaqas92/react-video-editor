@@ -30,7 +30,7 @@ export function ZoomEditor() {
               onClick={() => selectZoomMotion(m.id)}
               className="text-xs text-gray-700 font-mono cursor-pointer hover:text-gray-900"
             >
-              {m.peakScale}x · {m.duration.toFixed(1)}s · at {m.startTime.toFixed(1)}s
+              {m.peakScale}x · {(m.duration ?? 0).toFixed(1)}s · at {(m.startTime ?? 0).toFixed(1)}s
             </button>
             <Button
               variant="destructive"
@@ -66,7 +66,7 @@ export function ZoomEditor() {
       <div>
         <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
           <span>Duration</span>
-          <span className="font-mono">{motion.duration.toFixed(1)}s</span>
+          <span className="font-mono">{(motion.duration ?? 0).toFixed(1)}s</span>
         </div>
         <Slider min={0.5} max={15} step={0.1} value={[motion.duration]}
           onValueChange={([v]) => updateZoomMotion(motion.id, { duration: v ?? motion.duration })} />
@@ -75,7 +75,7 @@ export function ZoomEditor() {
       <div>
         <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
           <span>Zoom Level</span>
-          <span className="font-mono">{motion.peakScale.toFixed(1)}x</span>
+          <span className="font-mono">{(motion.peakScale ?? 0).toFixed(1)}x</span>
         </div>
         <Slider min={1.1} max={4} step={0.1} value={[motion.peakScale]}
           onValueChange={([v]) => updateZoomMotion(motion.id, { peakScale: v ?? motion.peakScale })} />

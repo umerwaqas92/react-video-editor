@@ -43,7 +43,7 @@ export function CursorEditor() {
                 onClick={() => selectCursorMotion(m.id)}
                 className="text-left text-xs text-gray-700 font-mono cursor-pointer hover:text-gray-900 truncate flex-grow"
               >
-                Click at {m.targetX.toFixed(2)}, {m.targetY.toFixed(2)} · {m.duration.toFixed(1)}s
+                Click at {(m.targetX ?? 0).toFixed(2)}, {(m.targetY ?? 0).toFixed(2)} · {(m.duration ?? 0).toFixed(1)}s
               </button>
               <Button
                 variant="ghost"
@@ -146,7 +146,7 @@ export function CursorEditor() {
       <div>
         <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
           <span>Cursor Size</span>
-          <span className="font-mono">{motion.size.toFixed(1)}x</span>
+          <span className="font-mono">{(motion.size ?? 0).toFixed(1)}x</span>
         </div>
         <Slider min={0.5} max={3} step={0.1} value={[motion.size]}
           onValueChange={([v]) => updateCursorMotion(motion.id, { size: v ?? motion.size })} />
@@ -156,7 +156,7 @@ export function CursorEditor() {
       <div>
         <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
           <span>Duration</span>
-          <span className="font-mono">{motion.duration.toFixed(1)}s</span>
+          <span className="font-mono">{(motion.duration ?? 0).toFixed(1)}s</span>
         </div>
         <Slider min={0.5} max={10} step={0.1} value={[motion.duration]}
           onValueChange={([v]) => updateCursorMotion(motion.id, { duration: v ?? motion.duration })} />

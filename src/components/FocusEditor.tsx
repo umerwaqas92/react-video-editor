@@ -45,7 +45,7 @@ export function FocusEditor() {
                 <span className="font-semibold capitalize text-indigo-600 mr-1">
                   {f.type}
                 </span>
-                ({f.shape}) · {f.duration.toFixed(1)}s
+                ({f.shape}) · {(f.duration ?? 0).toFixed(1)}s
               </button>
               <Button
                 variant="ghost"
@@ -146,7 +146,7 @@ export function FocusEditor() {
       <div>
         <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
           <span>Duration</span>
-          <span className="font-mono">{effect.duration.toFixed(1)}s</span>
+          <span className="font-mono">{(effect.duration ?? 0).toFixed(1)}s</span>
         </div>
         <Slider min={0.5} max={15} step={0.1} value={[effect.duration]}
           onValueChange={([v]) => updateFocusEffect(effect.id, { duration: v ?? effect.duration })} />
@@ -156,7 +156,7 @@ export function FocusEditor() {
       <div>
         <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
           <span>{isBlur ? 'Blur Intensity' : 'Zoom Magnification'}</span>
-          <span className="font-mono">{isBlur ? `${effect.intensity}px` : `${effect.intensity.toFixed(1)}x`}</span>
+          <span className="font-mono">{isBlur ? `${effect.intensity}px` : `${(effect.intensity ?? 0).toFixed(1)}x`}</span>
         </div>
         <Slider 
           min={isBlur ? 5 : 1.1} 

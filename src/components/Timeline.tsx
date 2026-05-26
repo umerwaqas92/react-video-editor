@@ -137,7 +137,7 @@ export function Timeline() {
       pos: t * pixelsPerSecond,
       label: t >= 60
         ? `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`
-        : `${t % 1 !== 0 ? t.toFixed(1) : t}s`,
+        : `${t % 1 !== 0 ? (t ?? 0).toFixed(1) : t}s`,
     })
   }
 
@@ -974,7 +974,7 @@ function TimelineClipItem({
         </div>
         <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-px flex items-center justify-between">
           <span className="text-[9px] text-white/80 truncate max-w-[55%]">{clip.name}</span>
-          <span className="text-[9px] text-white/50 font-mono">{effectiveDuration.toFixed(1)}s</span>
+          <span className="text-[9px] text-white/50 font-mono">{(effectiveDuration ?? 0).toFixed(1)}s</span>
         </div>
         <div className="absolute top-0.5 left-0.5 cursor-grab text-white/30 hover:text-white/60 hidden md:block">
           <GripHorizontal className="w-2.5 h-2.5" />

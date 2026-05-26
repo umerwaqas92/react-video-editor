@@ -361,7 +361,7 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
                   <div className="absolute bottom-2 left-2 w-3 h-3 border-b-2 border-l-2 border-amber-400 rounded-bl" />
                   <div className="absolute bottom-2 right-2 w-3 h-3 border-b-2 border-r-2 border-amber-400 rounded-br" />
                   <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-amber-500/80 text-white text-[10px] px-2 py-0.5 rounded-full font-mono">
-                    {motionZoom.toFixed(1)}x
+                    {(motionZoom ?? 0).toFixed(1)}x
                   </div>
                 </div>
               )}
