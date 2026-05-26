@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { drawFrame, preloadAssets, sizeCanvas, seekAllVideos, setOnSeeked, getVideoElement } from '@/lib/canvasRenderer'
 import { useEditorStore, createClip } from '@/store/editorStore'
-import { Upload } from 'lucide-react'
+import { Upload, MousePointer2 } from 'lucide-react'
 import { saveMediaAsset } from '@/lib/mediaStorage'
 
 export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
@@ -13,7 +13,7 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
   const sizedRef = useRef(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [phoneWidth, setPhoneWidth] = useState(260)
-  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect, zoomMotions, selectedZoomMotionId, updateZoomMotion, focusEffects, selectedFocusEffectId, updateFocusEffect } = useEditorStore()
+  const { clips, background, currentTime, isPlaying, devicePadding, previewZoom, addClip, selectedClipId, setDeviceAspect, updateClip, deviceAspect, zoomMotions, selectedZoomMotionId, updateZoomMotion, focusEffects, selectedFocusEffectId, updateFocusEffect, cursorMotions, selectedCursorMotionId, updateCursorMotion } = useEditorStore()
 
   useEffect(() => {
     preloadAssets(clips, background)
@@ -250,6 +250,49 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
     ? `${zoomOriginX * 100}% ${zoomOriginY * 100}%`
     : 'center center'
 
+  // Cursor animation logic
+  const activeCursorMotion = cursorMotions.find(m => currentTime >= m.startTime && currentTime <= m.startTime + m.duration)
+  let cursorStyle: React.CSSProperties | null = null
+  if (activeCursorMotion) {
+    const elapsed = currentTime - activeCursorMotion.startTime
+    const progress = elapsed / activeCursorMotion.duration // 0 to 1
+
+    // Smooth move in, hold, move out
+    // 0.0 -> 0.3: Move in
+    // 0.3 -> 0.7: Hold / Click
+    // 0.7 -> 1.0: Move out
+    let p: number
+    if (progress < 0.3) {
+      p = progress / 0.3 // 0 to 1
+    } else if (progress < 0.7) {
+      p = 1
+    } else {
+      p = 1 - (progress - 0.7) / 0.3 // 1 to 0
+    }
+
+    // Ease in/out
+    const ease = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+    const ep = ease(p)
+
+    let startX = 0.5, startY = 0.5
+    if (activeCursorMotion.startSide === 'top') { startX = activeCursorMotion.targetX; startY = -0.2 }
+    else if (activeCursorMotion.startSide === 'bottom') { startX = activeCursorMotion.targetX; startY = 1.2 }
+    else if (activeCursorMotion.startSide === 'left') { startX = -0.2; startY = activeCursorMotion.targetY }
+    else if (activeCursorMotion.startSide === 'right') { startX = 1.2; startY = activeCursorMotion.targetY }
+
+    const curX = startX + (activeCursorMotion.targetX - startX) * ep
+    const curY = startY + (activeCursorMotion.targetY - startY) * ep
+
+    const isClicking = progress >= 0.3 && progress <= 0.7
+
+    cursorStyle = {
+      left: `${curX * 100}%`,
+      top: `${curY * 100}%`,
+      transform: `translate(-50%, -50%) scale(${isClicking ? 0.8 : 1})`,
+      transition: isPlaying ? 'none' : 'all 0.1s ease',
+    }
+  }
+
   return (
     <div
       ref={previewAreaRef}
@@ -458,6 +501,69 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
                     {/* Effect type label */}
                     <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-[9px] px-1.5 py-px rounded-full font-mono whitespace-nowrap">
                       {fe.type === 'blur' ? 'Privacy Blur' : `Magnify (${fe.intensity}x)`}
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Animated Cursor */}
+              {cursorStyle && (
+                <div
+                  className="absolute z-30 pointer-events-none drop-shadow-lg"
+                  style={cursorStyle}
+                >
+                  <MousePointer2 className="w-6 h-6 text-white fill-black stroke-white stroke-2" />
+                  {/* Visual click ripple */}
+                  {currentTime - (activeCursorMotion?.startTime ?? 0) >= (activeCursorMotion?.duration ?? 0) * 0.3 &&
+                   currentTime - (activeCursorMotion?.startTime ?? 0) <= (activeCursorMotion?.duration ?? 0) * 0.35 && (
+                    <div className="absolute top-0 left-0 w-8 h-8 -translate-x-1/2 -translate-y-1/2 border-2 border-white/50 rounded-full animate-ping" />
+                  )}
+                </div>
+              )}
+
+              {/* Draggable Cursor target point — shown when cursor motion is selected */}
+              {selectedCursorMotionId && (() => {
+                const cm = cursorMotions.find(m => m.id === selectedCursorMotionId)
+                if (!cm) return null
+                const left = `${cm.targetX * 100}%`
+                const top = `${cm.targetY * 100}%`
+
+                const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  const screenEl = containerRef.current
+                  if (!screenEl) return
+                  const rect = screenEl.getBoundingClientRect()
+
+                  const onMove = (ev: MouseEvent | TouchEvent) => {
+                    const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                    const clientY = 'touches' in ev ? ev.touches[0].clientY : ev.clientY
+                    const nx = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+                    const ny = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height))
+                    updateCursorMotion(cm.id, { targetX: nx, targetY: ny })
+                  }
+                  const onUp = () => {
+                    document.removeEventListener('mousemove', onMove)
+                    document.removeEventListener('mouseup', onUp)
+                    document.removeEventListener('touchmove', onMove)
+                    document.removeEventListener('touchend', onUp)
+                  }
+                  document.addEventListener('mousemove', onMove)
+                  document.addEventListener('mouseup', onUp)
+                  document.addEventListener('touchmove', onMove)
+                  document.addEventListener('touchend', onUp)
+                }
+
+                return (
+                  <div
+                    className="absolute w-8 h-8 -translate-x-1/2 -translate-y-1/2 cursor-move z-40 flex items-center justify-center"
+                    style={{ left, top }}
+                    onMouseDown={handleDragStart}
+                    onTouchStart={handleDragStart}
+                  >
+                    <div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-md animate-pulse" />
+                    <div className="absolute -top-6 bg-blue-600 text-white text-[9px] px-1.5 py-px rounded-full font-mono whitespace-nowrap shadow-sm">
+                      Target
                     </div>
                   </div>
                 )

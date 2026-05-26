@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { useEditorStore } from '@/store/editorStore'
-import type { Clip, ZoomMotion } from '@/types'
+import type { Clip, ZoomMotion, CursorMotion } from '@/types'
 import { drawFrame, seekAllVideos, getVideoElement } from '@/lib/canvasRenderer'
 
 const EXPORT_FPS = 30
@@ -153,6 +153,41 @@ function getStageMotion(
   }
 }
 
+function getCursorAnimation(cursorMotions: CursorMotion[], currentTime: number) {
+  const activeMotion = cursorMotions.find(m => currentTime >= m.startTime && currentTime <= m.startTime + m.duration)
+  if (!activeMotion) return null
+
+  const elapsed = currentTime - activeMotion.startTime
+  const progress = elapsed / activeMotion.duration
+
+  let p: number
+  if (progress < 0.3) {
+    p = progress / 0.3
+  } else if (progress < 0.7) {
+    p = 1
+  } else {
+    p = 1 - (progress - 0.7) / 0.3
+  }
+
+  const ease = (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+  const ep = ease(p)
+
+  let startX = 0.5, startY = 0.5
+  if (activeMotion.startSide === 'top') { startX = activeMotion.targetX; startY = -0.2 }
+  else if (activeMotion.startSide === 'bottom') { startX = activeMotion.targetX; startY = 1.2 }
+  else if (activeMotion.startSide === 'left') { startX = -0.2; startY = activeMotion.targetY }
+  else if (activeMotion.startSide === 'right') { startX = 1.2; startY = activeMotion.targetY }
+
+  const x = startX + (activeMotion.targetX - startX) * ep
+  const xPos = x
+  const y = startY + (activeMotion.targetY - startY) * ep
+  const yPos = y
+  const isClicking = progress >= 0.3 && progress <= 0.7
+  const ripple = progress >= 0.3 && progress <= 0.35
+
+  return { x: xPos, y: yPos, isClicking, ripple }
+}
+
 function getZoomTransform(zoomMotions: ZoomMotion[], currentTime: number) {
   const ZOOM_IN = 0.2
   const ZOOM_OUT = 0.2
@@ -284,6 +319,44 @@ export function useExporter(canvasRef: React.RefObject<HTMLCanvasElement | null>
     roundedRectPath(ctx, notchX, notchY, notchW, notchH, notchH / 2)
     ctx.fillStyle = '#000000'
     ctx.fill()
+
+    // Draw cursor animation in export
+    const cursor = getCursorAnimation(state.cursorMotions, state.currentTime)
+    if (cursor) {
+      const cx = screenX + cursor.x * screenW
+      const cy = screenY + cursor.y * screenH
+      const size = phoneWidth * 0.08
+
+      ctx.save()
+      ctx.translate(cx, cy)
+      if (cursor.isClicking) ctx.scale(0.8, 0.8)
+
+      // Simple cursor shape (triangle + stem)
+      ctx.beginPath()
+      ctx.moveTo(0, 0)
+      ctx.lineTo(size * 0.7, size * 0.4)
+      ctx.lineTo(size * 0.4, size * 0.4)
+      ctx.lineTo(size * 0.6, size * 0.8)
+      ctx.lineTo(size * 0.45, size * 0.85)
+      ctx.lineTo(size * 0.25, size * 0.45)
+      ctx.lineTo(0, size * 0.6)
+      ctx.closePath()
+
+      ctx.fillStyle = 'black'
+      ctx.fill()
+      ctx.strokeStyle = 'white'
+      ctx.lineWidth = size * 0.1
+      ctx.stroke()
+      ctx.restore()
+
+      if (cursor.ripple) {
+        ctx.beginPath()
+        ctx.arc(cx, cy, size * 1.5, 0, Math.PI * 2)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
+        ctx.lineWidth = 2
+        ctx.stroke()
+      }
+    }
 
     ctx.restore()
   }, [previewStageSize])

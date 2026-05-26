@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useEditorStore, createZoomMotion, createFocusEffect } from '@/store/editorStore'
+import { useEditorStore, createZoomMotion, createFocusEffect, createCursorMotion } from '@/store/editorStore'
 import type { Clip } from '@/types'
-import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors, Play, Pause, Undo, Redo, AlignStartHorizontal, Maximize, Eye } from 'lucide-react'
+import { GripHorizontal, Film, ImageIcon, ZoomIn, ZoomOut, SkipBack, SkipForward, Scissors, Play, Pause, Undo, Redo, AlignStartHorizontal, Maximize, Eye, MousePointer2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { seekAllVideos } from '@/lib/canvasRenderer'
 
@@ -16,7 +16,7 @@ function getInterval(pps: number): number {
 }
 
 export function Timeline() {
-  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion, isPlaying, playbackRate, setPlaybackRate, undo, redo, canUndo, canRedo, recalculateTimeline, focusEffects, addFocusEffect, updateFocusEffect, selectedFocusEffectId, selectFocusEffect } = useEditorStore()
+  const { clips, selectedClipId, selectClip, reorderClips, totalDuration, currentTime, setCurrentTime, timelineZoom, setTimelineZoom, splitClipAtTime, zoomMotions, addZoomMotion, updateZoomMotion, selectedZoomMotionId, selectZoomMotion, isPlaying, playbackRate, setPlaybackRate, undo, redo, canUndo, canRedo, recalculateTimeline, focusEffects, addFocusEffect, updateFocusEffect, selectedFocusEffectId, selectFocusEffect, cursorMotions, addCursorMotion, updateCursorMotion, selectedCursorMotionId, selectCursorMotion } = useEditorStore()
   const dragRef = useRef<{ clipId: string; fromIndex: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const seekRafRef = useRef<number | null>(null)
@@ -156,31 +156,33 @@ export function Timeline() {
 
           <div className="w-px h-4 bg-gray-200 mx-0.5" />
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={() => setTimelineZoom(Math.max(2, timelineZoom - 5))}
-          >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </Button>
-          <input
-            type="range"
-            min={2}
-            max={200}
-            value={timelineZoom}
-            onChange={e => setTimelineZoom(Number(e.target.value))}
-            className="w-16 h-1 accent-gray-600"
-          />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={() => setTimelineZoom(Math.min(200, timelineZoom + 5))}
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </Button>
-          <span className="text-[10px] text-gray-400 font-mono">{timelineZoom}%</span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setTimelineZoom(Math.max(2, timelineZoom - 5))}
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </Button>
+            <input
+              type="range"
+              min={2}
+              max={200}
+              value={timelineZoom}
+              onChange={e => setTimelineZoom(Number(e.target.value))}
+              className="w-16 h-1 accent-gray-600"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setTimelineZoom(Math.min(200, timelineZoom + 5))}
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </Button>
+            <span className="text-[10px] text-gray-400 font-mono min-w-[32px]">{timelineZoom}%</span>
+          </div>
 
           <div className="w-px h-4 bg-gray-200 mx-1" />
 
@@ -273,6 +275,16 @@ export function Timeline() {
             disabled={!canSplitAtCurrentTime}
           >
             <Scissors className="w-3.5 h-3.5" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => addCursorMotion(createCursorMotion({ startTime: currentTime }))}
+            title="Add cursor click animation"
+          >
+            <MousePointer2 className="w-3.5 h-3.5 text-blue-500" />
           </Button>
 
           <Button
@@ -551,6 +563,174 @@ export function Timeline() {
                         const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
                         const dx = (clientX - startX) / pixelsPerSecond
                         updateZoomMotion(motion.id, { duration: Math.max(0.3, origDuration + dx) })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                  />
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Cursor motion track */}
+        <div className="mt-1 border-t border-gray-100" style={{ minWidth: totalWidth + 50 }}>
+          <div className="relative" style={{ minHeight: 20 }}>
+            {cursorMotions && cursorMotions.map(motion => {
+              const left = motion.startTime * pixelsPerSecond
+              const width = Math.max(motion.duration * pixelsPerSecond, 40)
+              return (
+                <div
+                  key={motion.id}
+                  className={`absolute top-1 rounded-full group ${
+                    motion.id === selectedCursorMotionId ? 'ring-2 ring-blue-500 ring-offset-1' : ''
+                  }`}
+                  style={{ left, width, height: 12 }}
+                >
+                  {/* Left resize handle */}
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-blue-600/50 rounded-l-full"
+                    onMouseDown={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.clientX
+                      const origStart = motion.startTime
+                      const origEnd = motion.startTime + motion.duration
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        const newStart = Math.max(0, origStart + dx)
+                        const newDuration = Math.max(0.3, origEnd - newStart)
+                        updateCursorMotion(motion.id, { startTime: newStart, duration: newDuration })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.touches[0].clientX
+                      const origStart = motion.startTime
+                      const origEnd = motion.startTime + motion.duration
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        const newStart = Math.max(0, origStart + dx)
+                        const newDuration = Math.max(0.3, origEnd - newStart)
+                        updateCursorMotion(motion.id, { startTime: newStart, duration: newDuration })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                  />
+                  {/* Body — drag to move */}
+                  <div
+                    className="h-full rounded-full bg-blue-400/60 border border-blue-500/80 flex items-center justify-center text-[8px] text-blue-900 font-mono truncate px-1 cursor-grab active:cursor-grabbing mx-2"
+                    onMouseDown={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.clientX
+                      const origStart = motion.startTime
+                      let moved = false
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        const newStart = Math.max(0, origStart + dx)
+                        if (Math.abs(dx) > 0.05) moved = true
+                        updateCursorMotion(motion.id, { startTime: newStart })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                        if (!moved) selectCursorMotion(motion.id)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.touches[0].clientX
+                      const origStart = motion.startTime
+                      let moved = false
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        const newStart = Math.max(0, origStart + dx)
+                        if (Math.abs(dx) > 0.05) moved = true
+                        updateCursorMotion(motion.id, { startTime: newStart })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                        if (!moved) selectCursorMotion(motion.id)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                  >
+                    Cursor
+                  </div>
+                  {/* Right resize handle */}
+                  <div
+                    className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize opacity-0 group-hover:opacity-100 bg-blue-600/50 rounded-r-full"
+                    onMouseDown={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.clientX
+                      const origDuration = motion.duration
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        updateCursorMotion(motion.id, { duration: Math.max(0.3, origDuration + dx) })
+                      }
+                      const onUp = () => {
+                        document.removeEventListener('mousemove', onMove as EventListener)
+                        document.removeEventListener('mouseup', onUp)
+                        document.removeEventListener('touchmove', onMove as EventListener)
+                        document.removeEventListener('touchend', onUp)
+                      }
+                      document.addEventListener('mousemove', onMove as EventListener)
+                      document.addEventListener('mouseup', onUp)
+                      document.addEventListener('touchmove', onMove as EventListener, { passive: false })
+                      document.addEventListener('touchend', onUp)
+                    }}
+                    onTouchStart={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      const startX = e.touches[0].clientX
+                      const origDuration = motion.duration
+                      const onMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = 'touches' in ev ? ev.touches[0].clientX : ev.clientX
+                        const dx = (clientX - startX) / pixelsPerSecond
+                        updateCursorMotion(motion.id, { duration: Math.max(0.3, origDuration + dx) })
                       }
                       const onUp = () => {
                         document.removeEventListener('mousemove', onMove as EventListener)
