@@ -58,3 +58,13 @@ export interface FocusEffect {
   intensity: number
 }
 
+export interface CursorMotion {
+  id: string
+  startTime: number
+  duration: number
+  targetX: number   // click position x (0-1)
+  targetY: number   // click position y (0-1)
+  startSide: 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  size: number
+  iconType: 'arrow' | 'hand'
+}

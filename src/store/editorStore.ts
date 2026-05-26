@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { Clip, ZoomMotion, FocusEffect } from '@/types'
+import type { Clip, ZoomMotion, FocusEffect, CursorMotion } from '@/types'
 import { deleteMediaAsset } from '@/lib/mediaStorage'
 
 export type Background =
@@ -11,9 +11,11 @@ interface EditorStore {
   clips: Clip[]
   zoomMotions: ZoomMotion[]
   focusEffects: FocusEffect[]
+  cursorMotions: CursorMotion[]
   selectedClipId: string | null
   selectedZoomMotionId: string | null
   selectedFocusEffectId: string | null
+  selectedCursorMotionId: string | null
   background: Background
   devicePadding: number
   previewZoom: number
@@ -60,6 +62,12 @@ interface EditorStore {
   updateFocusEffect: (id: string, updates: Partial<FocusEffect>) => void
   selectFocusEffect: (id: string | null) => void
 
+  addCursorMotion: (motion: CursorMotion) => void
+  duplicateCursorMotion: (id: string) => void
+  removeCursorMotion: (id: string) => void
+  updateCursorMotion: (id: string, updates: Partial<CursorMotion>) => void
+  selectCursorMotion: (id: string | null) => void
+
   undo: () => void
   redo: () => void
   canUndo: boolean
@@ -79,10 +87,24 @@ export function createZoomMotion(overrides?: Partial<ZoomMotion>): ZoomMotion {
   return {
     id: `zoom_${Date.now()}_${++idCounter}`,
     startTime: 0,
-    duration: 5,
-    peakScale: 1.5,
+    duration: 2.8,
+    peakScale: 1.2,
     targetX: 0.5,
     targetY: 0.5,
+    ...overrides,
+  }
+}
+
+export function createCursorMotion(overrides?: Partial<CursorMotion>): CursorMotion {
+  return {
+    id: `cursor_${Date.now()}_${++idCounter}`,
+    startTime: 0,
+    duration: 2,
+    targetX: 0.5,
+    targetY: 0.5,
+    startSide: 'right',
+    size: 1.5,
+    iconType: 'arrow',
     ...overrides,
   }
 }
@@ -108,6 +130,7 @@ function takeSnapshot(state: EditorStore): string {
     clips: state.clips,
     zoomMotions: state.zoomMotions,
     focusEffects: state.focusEffects,
+    cursorMotions: state.cursorMotions,
     background: state.background,
     devicePadding: state.devicePadding,
     stageAspect: state.stageAspect,
@@ -136,9 +159,11 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
   clips: [],
   zoomMotions: [],
   focusEffects: [],
+  cursorMotions: [],
   selectedClipId: null,
   selectedZoomMotionId: null,
   selectedFocusEffectId: null,
+  selectedCursorMotionId: null,
   background: { type: 'image', src: encodeURI('/_.jpeg') },
   devicePadding: 40,
   previewZoom: 1,
@@ -268,12 +293,12 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     if (id) {
       const clip = get().clips.find(c => c.id === id)
       if (clip?.naturalWidth && clip?.naturalHeight) {
-        set({ selectedClipId: id, selectedZoomMotionId: null, deviceAspect: `${clip.naturalWidth}/${clip.naturalHeight}` })
+        set({ selectedClipId: id, selectedZoomMotionId: null, selectedFocusEffectId: null, selectedCursorMotionId: null, deviceAspect: `${clip.naturalWidth}/${clip.naturalHeight}` })
       } else {
-        set({ selectedClipId: id, selectedZoomMotionId: null })
+        set({ selectedClipId: id, selectedZoomMotionId: null, selectedFocusEffectId: null, selectedCursorMotionId: null })
       }
     } else {
-      set({ selectedClipId: null, selectedZoomMotionId: null })
+      set({ selectedClipId: null, selectedZoomMotionId: null, selectedFocusEffectId: null, selectedCursorMotionId: null })
     }
   },
 
@@ -401,7 +426,7 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     }))
   },
 
-  selectZoomMotion: (id) => set({ selectedZoomMotionId: id, selectedClipId: null, selectedFocusEffectId: null }),
+  selectZoomMotion: (id) => set({ selectedZoomMotionId: id, selectedClipId: null, selectedFocusEffectId: null, selectedCursorMotionId: null }),
 
   addFocusEffect: (effect) => {
     get()._pushSnapshot()
@@ -436,7 +461,42 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     }))
   },
 
-  selectFocusEffect: (id) => set({ selectedFocusEffectId: id, selectedClipId: null, selectedZoomMotionId: null }),
+  selectFocusEffect: (id) => set({ selectedFocusEffectId: id, selectedClipId: null, selectedZoomMotionId: null, selectedCursorMotionId: null }),
+
+  addCursorMotion: (motion) => {
+    get()._pushSnapshot()
+    set(state => ({ cursorMotions: [...state.cursorMotions, motion] }))
+  },
+
+  duplicateCursorMotion: (id) => {
+    get()._pushSnapshot()
+    const state = get()
+    const original = state.cursorMotions.find(m => m.id === id)
+    if (!original) return
+    const duplicate: CursorMotion = {
+      ...original,
+      id: `cursor_${Date.now()}_${++idCounter}`,
+      startTime: original.startTime + original.duration + 0.5,
+    }
+    set({ cursorMotions: [...state.cursorMotions, duplicate], selectedCursorMotionId: duplicate.id, selectedClipId: null, selectedZoomMotionId: null, selectedFocusEffectId: null })
+  },
+
+  removeCursorMotion: (id) => {
+    get()._pushSnapshot()
+    set(state => ({
+      cursorMotions: state.cursorMotions.filter(m => m.id !== id),
+      selectedCursorMotionId: state.selectedCursorMotionId === id ? null : state.selectedCursorMotionId,
+    }))
+  },
+
+  updateCursorMotion: (id, updates) => {
+    get()._pushSnapshot()
+    set(state => ({
+      cursorMotions: state.cursorMotions.map(m => m.id === id ? { ...m, ...updates } : m),
+    }))
+  },
+
+  selectCursorMotion: (id) => set({ selectedCursorMotionId: id, selectedClipId: null, selectedZoomMotionId: null, selectedFocusEffectId: null }),
 
   resetAll: () => {
     // Clear IndexedDB
@@ -450,9 +510,11 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
       clips: [],
       zoomMotions: [],
       focusEffects: [],
+      cursorMotions: [],
       selectedClipId: null,
       selectedZoomMotionId: null,
       selectedFocusEffectId: null,
+      selectedCursorMotionId: null,
       background: { type: 'image', src: encodeURI('/_.jpeg') },
       devicePadding: 40,
       previewZoom: 1,
@@ -474,9 +536,11 @@ export const useEditorStore = create<EditorStore>()(persist((set, get) => ({
     clips: state.clips,
     zoomMotions: state.zoomMotions,
     focusEffects: state.focusEffects,
+    cursorMotions: state.cursorMotions,
     selectedClipId: state.selectedClipId,
     selectedZoomMotionId: state.selectedZoomMotionId,
     selectedFocusEffectId: state.selectedFocusEffectId,
+    selectedCursorMotionId: state.selectedCursorMotionId,
     background: state.background,
     devicePadding: state.devicePadding,
     previewZoom: state.previewZoom,

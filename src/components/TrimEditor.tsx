@@ -39,7 +39,7 @@ export function TrimEditor() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-xs font-medium text-gray-800 truncate">{clip.name}</span>
-          <span className="text-[10px] text-gray-400 font-mono flex-shrink-0">{effectiveDuration.toFixed(1)}s</span>
+          <span className="text-[10px] text-gray-400 font-mono flex-shrink-0">{(effectiveDuration ?? 0).toFixed(1)}s</span>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={handleDuplicate} title="Duplicate">
@@ -91,7 +91,7 @@ export function TrimEditor() {
           <div>
             <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
               <span>Zoom Value</span>
-              <span className="font-mono">{clip.motion.endScale.toFixed(2)}x</span>
+              <span className="font-mono">{(clip.motion.endScale ?? 0).toFixed(2)}x</span>
             </div>
             <Slider
               min={1}
@@ -133,7 +133,7 @@ export function TrimEditor() {
           <div>
             <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
               <span>Slide X</span>
-              <span className="font-mono">{clip.motion.endX.toFixed(1)}%</span>
+              <span className="font-mono">{(clip.motion.endX ?? 0).toFixed(1)}%</span>
             </div>
             <Slider
               min={-30}
@@ -147,7 +147,7 @@ export function TrimEditor() {
           <div>
             <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
               <span>Slide Y</span>
-              <span className="font-mono">{clip.motion.endY.toFixed(1)}%</span>
+              <span className="font-mono">{(clip.motion.endY ?? 0).toFixed(1)}%</span>
             </div>
             <Slider
               min={-30}
