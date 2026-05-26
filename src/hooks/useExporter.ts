@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 import type { Clip, ZoomMotion } from '@/types'
-import { drawFrame, seekAllVideos, getVideoElement } from '@/lib/canvasRenderer'
+import { drawFrame, seekAllVideos, getVideoElement, getAudioDestination } from '@/lib/canvasRenderer'
 
 const EXPORT_FPS = 30
 const EXPORT_LONG_EDGE = 1920
@@ -320,7 +320,18 @@ export function useExporter(canvasRef: React.RefObject<HTMLCanvasElement | null>
     exportCanvas.height = height
     exportCanvasRef.current = exportCanvas
 
-    const stream = exportCanvas.captureStream(EXPORT_FPS)
+    const canvasStream = exportCanvas.captureStream(EXPORT_FPS)
+
+    // Mix the audio stream from the global AudioDestination
+    const audioDest = getAudioDestination()
+    let stream = canvasStream
+    if (audioDest) {
+      const audioTracks = audioDest.stream.getAudioTracks()
+      if (audioTracks.length > 0) {
+        stream = new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks])
+      }
+    }
+
     streamRef.current = stream
     const { mimeType, extension } = chooseRecorderFormat()
     if (!mimeType) {

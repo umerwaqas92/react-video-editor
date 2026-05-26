@@ -22,11 +22,34 @@ export function clearMediaCache() {
   imageCache.clear()
 }
 
+let audioCtx: AudioContext | null = null
+let audioDest: MediaStreamAudioDestinationNode | null = null
+
+export function getAudioDestination() {
+  return audioDest
+}
+
+export function initAudioContext() {
+  if (!audioCtx) {
+    audioCtx = new AudioContext()
+    audioDest = audioCtx.createMediaStreamDestination()
+  }
+}
+
 export function getVideoElement(src: string): HTMLVideoElement {
   if (!videoCache.has(src)) {
     const video = document.createElement('video')
     video.src = src
-    video.muted = true
+    // Initialize audio context if not already done, just in case
+    initAudioContext()
+
+    // Connect video's audio to our global audio mixer and to speakers
+    if (audioCtx && audioDest) {
+      const source = audioCtx.createMediaElementSource(video)
+      source.connect(audioDest)
+      source.connect(audioCtx.destination)
+    }
+
     video.preload = 'auto'
     // Trigger redraw when video data is ready
     video.addEventListener('canplay', () => {
