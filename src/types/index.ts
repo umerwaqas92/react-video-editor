@@ -65,4 +65,6 @@ export interface CursorMotion {
   targetX: number   // click position x (0-1)
   targetY: number   // click position y (0-1)
   startSide: 'top' | 'bottom' | 'left' | 'right'
+  size: number
+  iconType: 'arrow' | 'hand'
 }

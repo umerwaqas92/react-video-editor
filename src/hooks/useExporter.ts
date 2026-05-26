@@ -185,7 +185,14 @@ function getCursorAnimation(cursorMotions: CursorMotion[], currentTime: number) 
   const isClicking = progress >= 0.3 && progress <= 0.7
   const ripple = progress >= 0.3 && progress <= 0.35
 
-  return { x: xPos, y: yPos, isClicking, ripple }
+  return {
+    x: xPos,
+    y: yPos,
+    isClicking,
+    ripple,
+    size: activeMotion.size,
+    iconType: activeMotion.iconType
+  }
 }
 
 function getZoomTransform(zoomMotions: ZoomMotion[], currentTime: number) {
@@ -325,21 +332,37 @@ export function useExporter(canvasRef: React.RefObject<HTMLCanvasElement | null>
     if (cursor) {
       const cx = screenX + cursor.x * screenW
       const cy = screenY + cursor.y * screenH
-      const size = phoneWidth * 0.08
+      const baseSize = phoneWidth * 0.05
+      const size = baseSize * cursor.size
 
       ctx.save()
       ctx.translate(cx, cy)
       if (cursor.isClicking) ctx.scale(0.8, 0.8)
 
-      // Simple cursor shape (triangle + stem)
       ctx.beginPath()
-      ctx.moveTo(0, 0)
-      ctx.lineTo(size * 0.7, size * 0.4)
-      ctx.lineTo(size * 0.4, size * 0.4)
-      ctx.lineTo(size * 0.6, size * 0.8)
-      ctx.lineTo(size * 0.45, size * 0.85)
-      ctx.lineTo(size * 0.25, size * 0.45)
-      ctx.lineTo(0, size * 0.6)
+      if (cursor.iconType === 'hand') {
+        // Simplified hand/pointer shape
+        ctx.moveTo(0, 0) // index finger tip
+        ctx.lineTo(size * 0.2, size * 0.2)
+        ctx.lineTo(size * 0.2, size * 0.4)
+        ctx.lineTo(size * 0.4, size * 0.4) // start of other fingers
+        ctx.lineTo(size * 0.4, size * 0.8)
+        ctx.lineTo(-size * 0.2, size * 0.8) // palm bottom
+        ctx.lineTo(-size * 0.2, size * 0.4) // palm side
+        ctx.lineTo(-size * 0.4, size * 0.4) // thumb tip
+        ctx.lineTo(-size * 0.4, size * 0.2)
+        ctx.lineTo(-size * 0.1, size * 0.2)
+        ctx.lineTo(0, 0)
+      } else {
+        // Arrow cursor shape
+        ctx.moveTo(0, 0)
+        ctx.lineTo(size * 0.7, size * 0.4)
+        ctx.lineTo(size * 0.4, size * 0.4)
+        ctx.lineTo(size * 0.6, size * 0.8)
+        ctx.lineTo(size * 0.45, size * 0.85)
+        ctx.lineTo(size * 0.25, size * 0.45)
+        ctx.lineTo(0, size * 0.6)
+      }
       ctx.closePath()
 
       ctx.fillStyle = 'black'

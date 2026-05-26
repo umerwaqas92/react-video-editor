@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { drawFrame, preloadAssets, sizeCanvas, seekAllVideos, setOnSeeked, getVideoElement } from '@/lib/canvasRenderer'
 import { useEditorStore, createClip } from '@/store/editorStore'
-import { Upload, MousePointer2 } from 'lucide-react'
+import { Upload, MousePointer2, Pointer } from 'lucide-react'
 import { saveMediaAsset } from '@/lib/mediaStorage'
 
 export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
@@ -288,7 +288,7 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
     cursorStyle = {
       left: `${curX * 100}%`,
       top: `${curY * 100}%`,
-      transform: `translate(-50%, -50%) scale(${isClicking ? 0.8 : 1})`,
+      transform: `translate(-50%, -50%) scale(${(isClicking ? 0.8 : 1) * activeCursorMotion.size})`,
       transition: isPlaying ? 'none' : 'all 0.1s ease',
     }
   }
@@ -512,7 +512,11 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
                   className="absolute z-30 pointer-events-none drop-shadow-lg"
                   style={cursorStyle}
                 >
-                  <MousePointer2 className="w-6 h-6 text-white fill-black stroke-white stroke-2" />
+                  {activeCursorMotion?.iconType === 'hand' ? (
+                    <Pointer className="w-6 h-6 text-white fill-black stroke-white stroke-2" />
+                  ) : (
+                    <MousePointer2 className="w-6 h-6 text-white fill-black stroke-white stroke-2" />
+                  )}
                   {/* Visual click ripple */}
                   {currentTime - (activeCursorMotion?.startTime ?? 0) >= (activeCursorMotion?.duration ?? 0) * 0.3 &&
                    currentTime - (activeCursorMotion?.startTime ?? 0) <= (activeCursorMotion?.duration ?? 0) * 0.35 && (

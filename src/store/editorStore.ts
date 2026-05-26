@@ -87,8 +87,8 @@ export function createZoomMotion(overrides?: Partial<ZoomMotion>): ZoomMotion {
   return {
     id: `zoom_${Date.now()}_${++idCounter}`,
     startTime: 0,
-    duration: 5,
-    peakScale: 1.5,
+    duration: 2.8,
+    peakScale: 1.2,
     targetX: 0.5,
     targetY: 0.5,
     ...overrides,
@@ -103,6 +103,8 @@ export function createCursorMotion(overrides?: Partial<CursorMotion>): CursorMot
     targetX: 0.5,
     targetY: 0.5,
     startSide: 'right',
+    size: 1.5,
+    iconType: 'arrow',
     ...overrides,
   }
 }

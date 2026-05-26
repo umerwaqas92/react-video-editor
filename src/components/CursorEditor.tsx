@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { useEditorStore } from '@/store/editorStore'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
-import { Copy, Trash2, X, MousePointer2 } from 'lucide-react'
+import { Copy, Trash2, X, MousePointer2, Pointer } from 'lucide-react'
 
 export function CursorEditor() {
   const {
@@ -79,6 +79,35 @@ export function CursorEditor() {
         </div>
       </div>
 
+      {/* Icon Type Toggle */}
+      <div className="space-y-1">
+        <span className="text-[10px] text-gray-400 font-medium">Icon Type</span>
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            onClick={() => updateCursorMotion(motion.id, { iconType: 'arrow' })}
+            className={`h-7 rounded text-xs font-medium cursor-pointer transition-all flex items-center justify-center gap-1 ${
+              motion.iconType === 'arrow'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <MousePointer2 className="w-3 h-3" />
+            Arrow
+          </button>
+          <button
+            onClick={() => updateCursorMotion(motion.id, { iconType: 'hand' })}
+            className={`h-7 rounded text-xs font-medium cursor-pointer transition-all flex items-center justify-center gap-1 ${
+              motion.iconType === 'hand'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <Pointer className="w-3 h-3" />
+            Hand
+          </button>
+        </div>
+      </div>
+
       {/* Start Side Toggle */}
       <div className="space-y-1">
         <span className="text-[10px] text-gray-400 font-medium">Start From Side</span>
@@ -97,6 +126,16 @@ export function CursorEditor() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Size Slider */}
+      <div>
+        <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
+          <span>Cursor Size</span>
+          <span className="font-mono">{motion.size.toFixed(1)}x</span>
+        </div>
+        <Slider min={0.5} max={3} step={0.1} value={[motion.size]}
+          onValueChange={([v]) => updateCursorMotion(motion.id, { size: v ?? motion.size })} />
       </div>
 
       {/* Duration Slider */}
