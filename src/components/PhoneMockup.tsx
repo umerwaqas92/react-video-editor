@@ -275,10 +275,16 @@ export function PhoneMockup({ canvasRef }: { canvasRef: React.RefObject<HTMLCanv
     const ep = ease(p)
 
     let startX = 0.5, startY = 0.5
-    if (activeCursorMotion.startSide === 'top') { startX = activeCursorMotion.targetX; startY = -0.2 }
-    else if (activeCursorMotion.startSide === 'bottom') { startX = activeCursorMotion.targetX; startY = 1.2 }
-    else if (activeCursorMotion.startSide === 'left') { startX = -0.2; startY = activeCursorMotion.targetY }
-    else if (activeCursorMotion.startSide === 'right') { startX = 1.2; startY = activeCursorMotion.targetY }
+    switch (activeCursorMotion.startSide) {
+      case 'top': startX = activeCursorMotion.targetX; startY = -0.2; break
+      case 'bottom': startX = activeCursorMotion.targetX; startY = 1.2; break
+      case 'left': startX = -0.2; startY = activeCursorMotion.targetY; break
+      case 'right': startX = 1.2; startY = activeCursorMotion.targetY; break
+      case 'top-left': startX = -0.2; startY = -0.2; break
+      case 'top-right': startX = 1.2; startY = -0.2; break
+      case 'bottom-left': startX = -0.2; startY = 1.2; break
+      case 'bottom-right': startX = 1.2; startY = 1.2; break
+    }
 
     const curX = startX + (activeCursorMotion.targetX - startX) * ep
     const curY = startY + (activeCursorMotion.targetY - startY) * ep

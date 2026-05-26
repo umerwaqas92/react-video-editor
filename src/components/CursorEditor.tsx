@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useEditorStore } from '@/store/editorStore'
+import type { CursorMotion } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { Copy, Trash2, X, MousePointer2, Pointer } from 'lucide-react'
@@ -108,21 +109,34 @@ export function CursorEditor() {
         </div>
       </div>
 
-      {/* Start Side Toggle */}
+      {/* Start Side/Corner Toggle */}
       <div className="space-y-1">
-        <span className="text-[10px] text-gray-400 font-medium">Start From Side</span>
-        <div className="grid grid-cols-2 gap-1.5">
-          {(['top', 'bottom', 'left', 'right'] as const).map(side => (
+        <span className="text-[10px] text-gray-400 font-medium">Start Position</span>
+        <div className="grid grid-cols-3 gap-1">
+          {[
+            { id: 'top-left', label: '↖' },
+            { id: 'top', label: '↑' },
+            { id: 'top-right', label: '↗' },
+            { id: 'left', label: '←' },
+            { id: 'center', label: '·', disabled: true },
+            { id: 'right', label: '→' },
+            { id: 'bottom-left', label: '↙' },
+            { id: 'bottom', label: '↓' },
+            { id: 'bottom-right', label: '↘' },
+          ].map(pos => (
             <button
-              key={side}
-              onClick={() => updateCursorMotion(motion.id, { startSide: side })}
-              className={`h-7 rounded text-xs font-medium cursor-pointer transition-all capitalize ${
-                motion.startSide === side
+              key={pos.id}
+              disabled={pos.disabled}
+              onClick={() => !pos.disabled && updateCursorMotion(motion.id, { startSide: pos.id as CursorMotion['startSide'] })}
+              className={`h-8 rounded text-sm font-medium transition-all ${
+                pos.disabled ? 'opacity-0 pointer-events-none' :
+                motion.startSide === pos.id
                   ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer'
               }`}
+              title={pos.id}
             >
-              {side}
+              {pos.label}
             </button>
           ))}
         </div>

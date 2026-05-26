@@ -173,10 +173,16 @@ function getCursorAnimation(cursorMotions: CursorMotion[], currentTime: number) 
   const ep = ease(p)
 
   let startX = 0.5, startY = 0.5
-  if (activeMotion.startSide === 'top') { startX = activeMotion.targetX; startY = -0.2 }
-  else if (activeMotion.startSide === 'bottom') { startX = activeMotion.targetX; startY = 1.2 }
-  else if (activeMotion.startSide === 'left') { startX = -0.2; startY = activeMotion.targetY }
-  else if (activeMotion.startSide === 'right') { startX = 1.2; startY = activeMotion.targetY }
+  switch (activeMotion.startSide) {
+    case 'top': startX = activeMotion.targetX; startY = -0.2; break
+    case 'bottom': startX = activeMotion.targetX; startY = 1.2; break
+    case 'left': startX = -0.2; startY = activeMotion.targetY; break
+    case 'right': startX = 1.2; startY = activeMotion.targetY; break
+    case 'top-left': startX = -0.2; startY = -0.2; break
+    case 'top-right': startX = 1.2; startY = -0.2; break
+    case 'bottom-left': startX = -0.2; startY = 1.2; break
+    case 'bottom-right': startX = 1.2; startY = 1.2; break
+  }
 
   const x = startX + (activeMotion.targetX - startX) * ep
   const xPos = x
@@ -249,7 +255,7 @@ export function useExporter(canvasRef: React.RefObject<HTMLCanvasElement | null>
   const exportCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const bgImageRef = useRef<HTMLImageElement | null>(null)
 
-  const drawComposedFrame = useCallback((screenCanvas: HTMLCanvasElement) => {
+  const drawComposedFrame = useCallback((screenCanvas: HTMLCanvasElement, currentTime: number) => {
     const exportCanvas = exportCanvasRef.current
     if (!exportCanvas) return
     const ctx = exportCanvas.getContext('2d')
@@ -258,8 +264,8 @@ export function useExporter(canvasRef: React.RefObject<HTMLCanvasElement | null>
     const state = useEditorStore.getState()
     const stageWidth = exportCanvas.width
     const stageHeight = exportCanvas.height
-    const { scale, tx, ty, originX, originY } = getStageMotion(state.clips, state.currentTime, stageWidth, stageHeight)
-    const zoom = getZoomTransform(state.zoomMotions, state.currentTime)
+    const { scale, tx, ty, originX, originY } = getStageMotion(state.clips, currentTime, stageWidth, stageHeight)
+    const zoom = getZoomTransform(state.zoomMotions, currentTime)
 
     // Outer app area background (gray) so stage motion offset matches preview edges.
     ctx.fillStyle = '#e5e7eb'
@@ -328,11 +334,12 @@ export function useExporter(canvasRef: React.RefObject<HTMLCanvasElement | null>
     ctx.fill()
 
     // Draw cursor animation in export
-    const cursor = getCursorAnimation(state.cursorMotions, state.currentTime)
+    const cursor = getCursorAnimation(state.cursorMotions, currentTime)
     if (cursor) {
       const cx = screenX + cursor.x * screenW
       const cy = screenY + cursor.y * screenH
-      const baseSize = phoneWidth * 0.05
+      // Base size should match preview icon (~24px on ~260px phone)
+      const baseSize = phoneWidth * 0.09
       const size = baseSize * cursor.size
 
       ctx.save()
@@ -341,27 +348,31 @@ export function useExporter(canvasRef: React.RefObject<HTMLCanvasElement | null>
 
       ctx.beginPath()
       if (cursor.iconType === 'hand') {
-        // Simplified hand/pointer shape
-        ctx.moveTo(0, 0) // index finger tip
-        ctx.lineTo(size * 0.2, size * 0.2)
-        ctx.lineTo(size * 0.2, size * 0.4)
-        ctx.lineTo(size * 0.4, size * 0.4) // start of other fingers
-        ctx.lineTo(size * 0.4, size * 0.8)
-        ctx.lineTo(-size * 0.2, size * 0.8) // palm bottom
-        ctx.lineTo(-size * 0.2, size * 0.4) // palm side
-        ctx.lineTo(-size * 0.4, size * 0.4) // thumb tip
-        ctx.lineTo(-size * 0.4, size * 0.2)
-        ctx.lineTo(-size * 0.1, size * 0.2)
+        // Improved hand icon path
+        ctx.moveTo(0, 0)
+        ctx.lineTo(size * 0.2, size * 0.3)
+        ctx.lineTo(size * 0.2, size * 0.45)
+        ctx.arc(size * 0.3, size * 0.45, size * 0.1, Math.PI, 0, false)
+        ctx.lineTo(size * 0.4, size * 0.5)
+        ctx.arc(size * 0.5, size * 0.5, size * 0.1, Math.PI, 0, false)
+        ctx.lineTo(size * 0.6, size * 0.6)
+        ctx.arc(size * 0.7, size * 0.6, size * 0.1, Math.PI, 0, false)
+        ctx.lineTo(size * 0.8, size * 0.8)
+        ctx.arc(size * 0.4, size * 0.9, size * 0.4, 0, Math.PI, false)
+        ctx.lineTo(-size * 0.2, size * 0.6)
+        ctx.arc(-size * 0.25, size * 0.5, size * 0.15, Math.PI * 0.5, Math.PI * 1.5, false)
+        ctx.lineTo(-size * 0.1, size * 0.4)
         ctx.lineTo(0, 0)
       } else {
-        // Arrow cursor shape
+        // Improved arrow cursor shape (closer to Lucide MousePointer2)
         ctx.moveTo(0, 0)
-        ctx.lineTo(size * 0.7, size * 0.4)
-        ctx.lineTo(size * 0.4, size * 0.4)
-        ctx.lineTo(size * 0.6, size * 0.8)
-        ctx.lineTo(size * 0.45, size * 0.85)
-        ctx.lineTo(size * 0.25, size * 0.45)
-        ctx.lineTo(0, size * 0.6)
+        ctx.lineTo(size * 0.45, size * 1.1)
+        ctx.lineTo(size * 0.6, size * 0.9)
+        ctx.lineTo(size * 0.9, size * 1.2)
+        ctx.lineTo(size * 1.1, size * 1.1)
+        ctx.lineTo(size * 0.8, size * 0.8)
+        ctx.lineTo(size * 1.1, size * 0.6)
+        ctx.lineTo(0, 0)
       }
       ctx.closePath()
 
@@ -369,13 +380,14 @@ export function useExporter(canvasRef: React.RefObject<HTMLCanvasElement | null>
       ctx.fill()
       ctx.strokeStyle = 'white'
       ctx.lineWidth = size * 0.1
+      ctx.lineJoin = 'round'
       ctx.stroke()
       ctx.restore()
 
       if (cursor.ripple) {
         ctx.beginPath()
-        ctx.arc(cx, cy, size * 1.5, 0, Math.PI * 2)
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
+        ctx.arc(cx, cy, size * 1.2, 0, Math.PI * 2)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'
         ctx.lineWidth = 2
         ctx.stroke()
       }
@@ -459,7 +471,7 @@ export function useExporter(canvasRef: React.RefObject<HTMLCanvasElement | null>
     seekAllVideos(state.clips, 0, state.playbackRate)
     await waitForVideoFrameAtTime(state.clips, 0)
     drawFrame(screenCanvas, state.clips, state.background, 0)
-    drawComposedFrame(screenCanvas)
+    drawComposedFrame(screenCanvas, 0)
     await waitAnimationFrame()
 
     recorder.start()
@@ -472,7 +484,7 @@ export function useExporter(canvasRef: React.RefObject<HTMLCanvasElement | null>
     const trackProgress = () => {
       if (!recorderRef.current || recorderRef.current.state === 'inactive') return
       const s = useEditorStore.getState()
-      drawComposedFrame(screenCanvas)
+      drawComposedFrame(screenCanvas, s.currentTime)
       if (s.currentTime >= duration - 0.05) {
         recorderRef.current.stop()
         return
